@@ -4,6 +4,12 @@ Amplop is a small, personal YNAB-style budgeting app built around envelope budge
 
 This app was originally built for my own finances with help from Claude Cowork and Gemini/AI Studio. It is tuned for Indonesian rupiah, mobile use, and the way I think about monthly budgeting.
 
+## Use The App
+
+An online version is available at [amplop.netlify.app](https://amplop.netlify.app/).
+
+Amplop works locally in the browser by default. If you want to use it across multiple devices, you can configure Supabase-backed sync from the app's settings and use a passphrase so the synced budget data is encrypted before it leaves the browser.
+
 ## What It Does
 
 - Tracks income as money that is ready to assign.
@@ -53,7 +59,7 @@ npm run lint
 
 Amplop is local-first. Budget data is saved in browser `localStorage` under the app's storage key, so clearing browser data can remove your budget unless you export a backup first.
 
-Use the JSON export/import flow for backups. If sync is configured, the app derives an encryption key from the configured passphrase and uses browser crypto before syncing data.
+Use the JSON export/import flow for backups. If Supabase sync is configured, the app derives an encryption key from the configured passphrase and uses browser crypto before syncing data between devices.
 
 ## Notes
 
