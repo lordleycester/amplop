@@ -2,7 +2,7 @@
 
 Amplop is a small, personal YNAB-style budgeting app built around envelope budgeting. The name comes from the Indonesian word for envelope: put money into jobs, track what leaves each envelope, and keep the month honest.
 
-This app was originally built for my own finances with help from Gemini/AI Studio. It is tuned for Indonesian rupiah, mobile use, and the way I think about monthly budgeting.
+This app was originally built for my own finances with help from Claude Cowork and Gemini/AI Studio. It is tuned for Indonesian rupiah, mobile use, and the way I think about monthly budgeting.
 
 ## What It Does
 
