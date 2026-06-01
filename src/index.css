@@ -1,0 +1,269 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  /* Redefine base system colors to match the warm, tactile Aubade palette */
+  --color-slate-50: #FAF7F2;
+  --color-slate-100: #F4EFEB;
+  --color-slate-200: #E6DFD5;
+  --color-slate-300: #D5CAB9;
+  --color-slate-400: #887E6E;
+  
+  --color-gray-50: #FAF7F2;
+  --color-gray-100: #F4EFEB;
+  --color-gray-150: #E6DFD5;
+  --color-gray-200: #1E1E1E;
+  --color-gray-300: #1E1E1E;
+  --color-gray-400: #5F5E5A;
+  --color-gray-450: #5F5E5A;
+  --color-gray-500: #1E1E1E;
+  --color-gray-800: #1C1C1D;
+  --color-gray-900: #121212;
+
+  /* Redefine emerald to Aubade's elegant Organic Muted Sage Green shades */
+  --color-emerald-50: #F1EFE9;
+  --color-emerald-100: #E5E0D5;
+  --color-emerald-400: #D9A241; /* Sunlight Ochre */
+  --color-emerald-500: #667C66; /* Elegant Sage Green */
+  --color-emerald-600: #4E654E; /* Forest Green */
+  --color-emerald-700: #4E654E;
+  --color-emerald-800: #1E1E1E; /* Neutral Charcoal Black Buttons */
+  --color-emerald-850: #1D2E22;
+  --color-emerald-900: #121212;
+  --color-emerald-950: #1E1E1E; /* Main charcoal header blocks */
+  
+  /* Redefine amber to Aubade's Sunrise Orange-Red / Rust tone */
+  --color-amber-50: #FFFDF9;
+  --color-amber-100: #E6DFD5;
+  --color-amber-450: #C05036; /* Crimson / Rust */
+  --color-amber-500: #C05036;
+  --color-amber-600: #C05036;
+  --color-amber-700: #C05036;
+  --color-amber-800: #C05036;
+  
+  /* Redefine red colors to Aubade's distinctive Brick Red */
+  --color-red-50: #FDF9F8;
+  --color-red-100: #F7EAE6;
+  --color-red-500: #B23A22;
+  --color-red-600: #B23A22;
+  --color-red-650: #B23A22;
+  
+  /* Core brand fonts mapping */
+  --font-sans: "Space Grotesk", "Inter", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+  
+  /* Reset rounded corners globally to enforce rigid, geometric flat brutalism */
+  --radius-xs: 0px;
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
+  --radius-2xl: 0px;
+  --radius-full: 0px;
+}
+
+/* Global document base styled warm paper */
+body {
+  background-color: #121212;
+  color: #1E1E1E;
+}
+
+/* Base typeface presets */
+button, input, select, textarea {
+  font-family: "Space Grotesk", "Inter", sans-serif !important;
+}
+
+/* Setup the phone viewport wrapping */
+#app-viewport {
+  background-color: #FAF7F2 !important;
+  color: #1E1E1E !important;
+  border: 4px solid #1E1E1E !important;
+  border-radius: 0px !important;
+  box-shadow: 12px 12px 0px 0px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* 1. Viewport header & footer tweaks */
+#topbar {
+  background-color: #1E1E1E !important;
+  border-bottom: 3.5px solid #1E1E1E !important;
+}
+#topbar span {
+  font-family: "Space Grotesk", sans-serif !important;
+  font-weight: 700 !important;
+}
+
+#bottom-bar {
+  background-color: #1E1E1E !important;
+  border-top: 3.5px solid #1E1E1E !important;
+}
+
+/* Highlight the active navigation tabs with high tactile impact */
+#nav-wrapper button.text-white {
+  background-color: #C05036 !important; /* Sunrise active button action */
+  color: #FFFFFF !important;
+  font-weight: 700 !important;
+  border: 1.5px solid #1E1E1E !important;
+  box-shadow: 1.5px 1.5px 0px 0px rgba(0,0,0,0.5) !important;
+}
+
+/* Force elements with backgrounds to look like retro brutal folders / cards */
+#rta-banner,
+div[id^="card-"],
+div[id$="-card"],
+div[id^="group-wrapper-"],
+.settings-section-card,
+#settings-sync-panel,
+.retro-card {
+  background-color: #FFFFFF !important;
+  border: 2px solid #1E1E1E !important;
+  border-radius: 0px !important;
+  box-shadow: 4px 4px 0px 0px #1E1E1E !important;
+}
+
+/* Remove default styling for lists and lists tables rows */
+div[id^="cat-row-"] {
+  border-bottom: 1.5px solid #1E1E1E !important;
+  border-radius: 0px !important;
+}
+div[id^="cat-row-"]:hover {
+  background-color: #F4EFEB !important;
+}
+
+/* Progress-bars style */
+div[id^="cat-progress-bg-"],
+div[id^="analysis-gauge-bg-"],
+div[id^="inst-progress-"] {
+  border-radius: 0px !important;
+  border: 1px solid #1E1E1E !important;
+  background-color: #FAF7F2 !important;
+}
+
+div[id^="cat-progress-bg-"] > div,
+div[id^="analysis-gauge-bg-"] > div,
+div[id^="inst-progress-"] > div {
+  border-radius: 0px !important;
+}
+
+/* Highlight current targets and availability chips */
+span[id^="cat-target-badge-"] {
+  border: 1px solid #1E1E1E !important;
+  background-color: #FAF7F2 !important;
+  border-radius: 0px !important;
+  color: #1E1E1E !important;
+  font-weight: 700 !important;
+}
+
+span[id^="cat-avail-badge-"] {
+  border-radius: 0px !important;
+  border: 1px solid #1E1E1E !important;
+  text-transform: uppercase;
+  font-weight: 700 !important;
+  font-family: "JetBrains Mono", monospace !important;
+  box-shadow: 1.5px 1.5px 0px 0px #1E1E1E !important;
+}
+
+/* Input boxes & form fields styling */
+input[type="text"],
+input[type="number"],
+input[type="password"],
+input[type="date"],
+select,
+textarea {
+  padding: 0.625rem 0.875rem !important; /* Elegant spacious padding as requested */
+  border: 2px solid #1E1E1E !important;
+  background-color: #FFFFFF !important;
+  color: #1E1E1E !important;
+  border-radius: 0px !important;
+  box-shadow: 2px 2px 0px 0px #1E1E1E !important;
+  transition: all 0.1s ease !important;
+}
+
+input[type="text"]:focus,
+input[type="number"]:focus,
+input[type="password"]:focus,
+input[type="date"]:focus,
+select:focus,
+textarea:focus {
+  outline: none !important;
+  border-color: #C05036 !important;
+  box-shadow: 3.5px 3.5px 0px 0px #C05036 !important;
+}
+
+/* Tactile action buttons */
+button.bg-emerald-800,
+button[id$="-submit-btn"],
+button[id^="form-"],
+button[id$="-btn"],
+button[id$="-submit"] {
+  border: 2px solid #1E1E1E !important;
+  background-color: #C05036 !important; /* Authentic Aubade Rust Crimson red as primary clicker */
+  color: #FFFFFF !important;
+  border-radius: 0px !important;
+  box-shadow: 2.5px 2.5px 0px 0px #1E1E1E !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  transition: all 0.1s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+}
+
+button.bg-emerald-800:hover,
+button[id$="-submit-btn"]:hover,
+button[id^="form-"]:hover,
+button[id$="-btn"]:hover,
+button[id$="-submit"]:hover {
+  transform: translate(0.5px, 0.5px) !important;
+  box-shadow: 1.5px 1.5px 0px 0px #1E1E1E !important;
+}
+
+button.bg-emerald-800:active,
+button[id$="-submit-btn"]:active,
+button[id^="form-"]:active,
+button[id$="-btn"]:active,
+button[id$="-submit"]:active {
+  transform: translate(2.5px, 2.5px) !important;
+  box-shadow: 0px 0px 0px 0px #1E1E1E !important;
+}
+
+/* Bottom drawers (sheets) should follow the strict geometry with a crisp shadow */
+#sheet-container {
+  border-top: 3.5px solid #1E1E1E !important;
+  border-left: 3.5px solid #1E1E1E !important;
+  border-right: 3.5px solid #1E1E1E !important;
+  border-radius: 0px !important;
+  background-color: #FAF7F2 !important;
+  box-shadow: 0px -4px 15px rgba(0, 0, 0, 0.15) !important;
+}
+
+#sheet-handle {
+  background-color: #1E1E1E !important;
+  border-radius: 0px !important;
+  height: 3px !important;
+  width: 32px !important;
+}
+
+#sheet-header {
+  border-bottom: 2px solid #1E1E1E !important;
+}
+
+/* Customize general text layout styling */
+h1, h2, h3, h4, h5, h6 {
+  font-family: "Space Grotesk", sans-serif !important;
+  color: #1E1E1E !important;
+  font-weight: 700 !important;
+}
+
+/* Scrollbar tweaks to reinforce industrial brutalism */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #FAF7F2;
+}
+::-webkit-scrollbar-thumb {
+  background: #1E1E1E;
+  border-radius: 0px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #C05036;
+}

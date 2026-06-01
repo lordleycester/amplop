@@ -1,0 +1,6 @@
+{
+  "name": "Envelope Budget Tracker",
+  "description": "A clean, high-contrast Envelope Budgeting and Installment Tracking application with a tactile retro-brutalist aesthetic.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
