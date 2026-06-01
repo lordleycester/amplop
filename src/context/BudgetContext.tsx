@@ -10,6 +10,20 @@ import {
 import { 
   genId, todayMonth, todayStr, prevMonth as calcPrevMonth, nextMonth as calcNextMonth, calculateAgeOfMoney 
 } from '../utils/helpers';
+import {
+  accountIsOnBudgetType,
+  activeInstallments as calculateActiveInstallments,
+  getAccountBalance as calculateAccountBalance,
+  getAssigned as calculateAssigned,
+  getAvailable as calculateAvailable,
+  getBudgetAccountsTotal as calculateBudgetAccountsTotal,
+  getNetWorth as calculateNetWorth,
+  getRTA as calculateRTA,
+  getSpent as calculateSpent,
+  totalAssigned as calculateTotalAssigned,
+  totalIncome as calculateTotalIncome,
+  totalInstallmentObligation as calculateTotalInstallmentObligation
+} from '../utils/budgetMath';
 
 interface BudgetContextType {
   state: AppState;
@@ -206,11 +220,11 @@ export const BudgetProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   const activeInstallments = (month: string) => {
-    return state.installments.filter(inst => _instIsActive(inst, month));
+    return calculateActiveInstallments(state, month);
   };
 
   const totalInstallmentObligation = (month: string) => {
-    return activeInstallments(month).reduce((s, inst) => s + inst.monthlyPayment, 0);
+    return calculateTotalInstallmentObligation(state, month);
   };
 
   // Generate complete installment transactions
@@ -240,36 +254,15 @@ export const BudgetProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   // Balance and RTA Logic
   const getAccountBalance = (accountId: string): number => {
-    const acc = state.accounts.find(a => a.id === accountId);
-    if (!acc) return 0;
-    const start = acc.startingBalance || 0;
-    const incomeIn = state.income
-      .filter(i => i.accountId === accountId)
-      .reduce((s, i) => s + i.amount, 0);
-    const spent = state.transactions
-      .filter(t => t.accountId === accountId)
-      .reduce((s, t) => s + t.amount, 0);
-    const transferIn = state.transfers
-      .filter(tf => tf.toAccountId === accountId)
-      .reduce((s, tf) => s + tf.amount, 0);
-    const transferOut = state.transfers
-      .filter(tf => tf.fromAccountId === accountId)
-      .reduce((s, tf) => s + tf.amount, 0);
-      
-    if (acc.type === 'credit_card') {
-      return start - spent + incomeIn + transferIn - transferOut;
-    }
-    return start + incomeIn - spent + transferIn - transferOut;
+    return calculateAccountBalance(state, accountId);
   };
 
   const getBudgetAccountsTotal = () => {
-    return state.accounts
-      .filter(a => a.onBudget)
-      .reduce((s, a) => s + getAccountBalance(a.id), 0);
+    return calculateBudgetAccountsTotal(state);
   };
 
   const getNetWorth = () => {
-    return state.accounts.reduce((s, a) => s + getAccountBalance(a.id), 0);
+    return calculateNetWorth(state);
   };
 
   const getAgeOfMoney = () => {
@@ -279,65 +272,27 @@ export const BudgetProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   // Ready To Assign Computations
   // Critical Fix: include positive starting balances of all on-budget accounts into totalIncome calculation!
   const totalIncome = (month: string): number => {
-    const inflowSum = state.income
-      .filter(i => i.date.substring(0, 7) <= month)
-      .reduce((s, i) => s + i.amount, 0);
-      
-    // Include starting balances of checking, savings, cash, etc. (excluding credit card debt)
-    const onBudgetStartingBalances = state.accounts
-      .filter(a => a.onBudget && a.type !== 'credit_card')
-      .reduce((s, a) => s + (a.startingBalance || 0), 0);
-      
-    return inflowSum + onBudgetStartingBalances;
+    return calculateTotalIncome(state, month);
   };
 
   const totalAssigned = (month: string): number => {
-    let sum = 0;
-    for (const [m, categoryAssignedMap] of Object.entries(state.budgets)) {
-      if (m <= month) {
-        for (const amt of Object.values(categoryAssignedMap)) {
-          sum += (amt || 0);
-        }
-      }
-    }
-    return sum;
+    return calculateTotalAssigned(state, month);
   };
 
   const getRTA = (month: string): number => {
-    return totalIncome(month) - totalAssigned(month);
+    return calculateRTA(state, month);
   };
 
   const getSpent = (catId: string, month: string): number => {
-    return state.transactions
-      .filter(t => t.catId === catId && t.date.substring(0, 7) === month)
-      .reduce((s, t) => s + t.amount, 0);
+    return calculateSpent(state, catId, month);
   };
 
   const getAssigned = (catId: string, month: string): number => {
-    return state.budgets[month]?.[catId] || 0;
+    return calculateAssigned(state, catId, month);
   };
 
   const getAvailable = (catId: string, month: string): number => {
-    let assigned = 0;
-    let spent = 0;
-    
-    // Find all distinct months where a budget, transaction, or income existed up to "month"
-    const monthsSet = new Set<string>();
-    state.transactions.forEach(t => monthsSet.add(t.date.substring(0, 7)));
-    state.income.forEach(i => monthsSet.add(i.date.substring(0, 7)));
-    Object.keys(state.budgets).forEach(m => monthsSet.add(m));
-    monthsSet.add(month);
-    
-    const sortedMonths = Array.from(monthsSet)
-      .filter(m => m <= month)
-      .sort();
-      
-    for (const m of sortedMonths) {
-      assigned += getAssigned(catId, m);
-      spent += getSpent(catId, m);
-    }
-    
-    return assigned - spent;
+    return calculateAvailable(state, catId, month);
   };
 
   // Recurring Scheduled templates
@@ -778,7 +733,7 @@ export const BudgetProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const addAccount = (name: string, type: Account['type'], balance: number) => {
     setState(prev => {
       const id = name.toLowerCase().replace(/[^a-z0-9]/g, '_') + '_' + Date.now().toString(36);
-      const isBudget = ['checking', 'savings', 'credit_card', 'cash'].includes(type);
+      const isBudget = accountIsOnBudgetType(type);
       const newAcc: Account = {
         id,
         name,
@@ -801,7 +756,7 @@ export const BudgetProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         ...a,
         name,
         type,
-        onBudget: ['checking', 'savings', 'credit_card', 'cash'].includes(type),
+        onBudget: accountIsOnBudgetType(type),
         startingBalance
       } : a)
     }));
