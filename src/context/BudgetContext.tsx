@@ -82,6 +82,7 @@ interface BudgetContextType {
   deleteExpense: (txId: string) => void;
   
   addIncome: (amount: number, date: string, accountId: string | null, note: string) => void;
+  editIncome: (incId: string, amount: number, date: string, accountId: string | null, note: string) => void;
   deleteIncome: (incId: string) => void;
   
   addTransfer: (fromId: string, toId: string, amount: number, date: string, note: string, kind?: string) => void;
@@ -443,36 +444,6 @@ export const BudgetProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         const currentAssigned = activeBudget[item.cat.id] || 0;
         activeBudget[item.cat.id] = currentAssigned + give;
         rta -= give;
-      }
-
-      // Sweep leftover to leftover_savings if RTA still > 0
-      if (rta > 0) {
-        let leftSavingsCat = prev.categories.find(c => c.id === 'leftover_savings');
-        let newCategories = [...prev.categories];
-        let newGroups = [...prev.groups];
-
-        if (!leftSavingsCat) {
-          let savingsGroup = prev.groups.find(g => g.id === 'savings');
-          if (!savingsGroup) {
-            savingsGroup = { id: 'savings', name: 'Savings Goals', collapsed: false, sort: prev.groups.length };
-            newGroups.push(savingsGroup);
-          }
-          const groupCats = prev.categories.filter(c => c.groupId === savingsGroup!.id);
-          leftSavingsCat = {
-            id: 'leftover_savings',
-            name: 'Leftover Savings',
-            emoji: '',
-            groupId: savingsGroup.id,
-            sort: groupCats.length,
-            target: null
-          };
-          newCategories.push(leftSavingsCat);
-        }
-
-        const currentAssigned = activeBudget[leftSavingsCat.id] || 0;
-        activeBudget[leftSavingsCat.id] = currentAssigned + rta;
-        freshBudgets[month] = activeBudget;
-        return { ...prev, budgets: freshBudgets, categories: newCategories, groups: newGroups };
       }
 
       freshBudgets[month] = activeBudget;
@@ -846,6 +817,19 @@ export const BudgetProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         income: [...prev.income, newInc]
       };
     });
+  };
+
+  const editIncome = (incId: string, amount: number, date: string, accountId: string | null, note: string) => {
+    setState(prev => ({
+      ...prev,
+      income: prev.income.map(i => i.id === incId ? {
+        ...i,
+        date,
+        amount,
+        accountId: accountId || null,
+        note
+      } : i)
+    }));
   };
 
   const deleteIncome = (incId: string) => {
@@ -1270,6 +1254,7 @@ export const BudgetProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       deleteExpense,
       
       addIncome,
+      editIncome,
       deleteIncome,
       
       addTransfer,

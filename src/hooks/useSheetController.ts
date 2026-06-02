@@ -21,6 +21,7 @@ type SheetPayloadMap = {
   transaction_detail: Transaction;
   edit_expense: Transaction;
   income_detail: Income;
+  edit_income: Income;
   transfer_detail: Transfer;
 };
 

@@ -81,6 +81,12 @@ export const useSheetFormState = (sheet: SheetState, defaultCategoryGroupId: str
         setFormDate(sheet.data.date);
         setFormNote(sheet.data.note || '');
         break;
+      case 'edit_income':
+        setFormAmountStr(String(sheet.data.amount));
+        setFormSelectedId(sheet.data.accountId || '');
+        setFormDate(sheet.data.date);
+        setFormNote(sheet.data.note || '');
+        break;
       case 'edit_recurring': {
         const recurring = sheet.data as Recurring;
         setFormRecurringType(recurring.type);

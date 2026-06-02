@@ -17,6 +17,7 @@ import {
 import { 
   InstallmentsSection 
 } from './components/InstallmentsSection';
+import { MonthEndNudge } from './components/MonthEndNudge';
 import { 
   BudgetTab 
 } from './components/BudgetTab';
@@ -123,6 +124,14 @@ function MainAppContent() {
     setCategorySurveyOpen(true);
   };
 
+  const skipCategorySurvey = () => {
+    closeOnboarding();
+    setCategorySurveyOpen(false);
+    setSetupCoachOpen(true);
+    setSetupStep('targets');
+    setActiveView('budget');
+  };
+
   const applyCategorySurvey = (categories: StarterCategoryInput[]) => {
     applyStarterCategories(categories);
     setCategorySurveyOpen(false);
@@ -145,6 +154,16 @@ function MainAppContent() {
   const openSetupAssignMoney = () => {
     setActiveView('budget');
     showToast('Use Auto-Assign or tap an Assigned amount to fund categories.', null, undefined);
+  };
+
+  const openSetupTransaction = () => {
+    setActiveView('budget');
+    openSheet('quick_add', 'Add Expense');
+  };
+
+  const promptAssignMoney = () => {
+    setActiveView('budget');
+    showToast('Tap an Assigned amount or use Auto-Assign to give the remaining money a job.', null, undefined);
   };
 
   return (
@@ -190,6 +209,7 @@ function MainAppContent() {
             onSetTarget={openSetupTarget}
             onAddAccount={openSetupAccount}
             onAssignMoney={openSetupAssignMoney}
+            onAddTransaction={openSetupTransaction}
             onDismiss={() => setSetupCoachOpen(false)}
           />
         )}
@@ -202,6 +222,7 @@ function MainAppContent() {
               onSetToast={showToast}
               onShowConfirm={showConfirm}
             />
+            <MonthEndNudge onAssignNow={promptAssignMoney} />
             {/* Scheduled recurrings banner */}
             <RecurringBanner 
               onAddRecurringClick={() => openSheet('add_recurring', 'New Recurring Schedule')}
@@ -378,6 +399,7 @@ function MainAppContent() {
         isOpen={showOnboarding}
         onClose={closeOnboarding}
         onStartBudgeting={startBudgetingGuide}
+        onSkipSurvey={skipCategorySurvey}
       />
 
       <CategorySurvey

@@ -15,7 +15,7 @@ import { AddInstallmentForm, EditInstallmentForm, InstallmentDetailSheet } from 
 import { PayCreditCardForm } from './PayCreditCardForm';
 import { QuickAddExpenseForm } from './QuickAddExpenseForm';
 import { AddRecurringForm, EditRecurringForm } from './RecurringForms';
-import { EditExpenseForm, IncomeDetailSheet, TransactionDetailSheet, TransferDetailSheet } from './TransactionDetailSheets';
+import { EditExpenseForm, EditIncomeForm, IncomeDetailSheet, TransactionDetailSheet, TransferDetailSheet } from './TransactionDetailSheets';
 import { TransferForm } from './TransferForm';
 import type { OpenSheet } from '../../hooks/useSheetController';
 import type { SheetFormState } from '../../hooks/useSheetFormState';
@@ -394,6 +394,23 @@ export const AppBottomSheets: React.FC<AppBottomSheetsProps> = ({
           closeSheet={closeSheet}
           showToast={showToast}
           showConfirm={showConfirm}
+          onEditIncome={(income) => openSheet('edit_income', 'Edit Income', income)}
+        />
+      )}
+
+      {sheet.type === 'edit_income' && sheet.data && (
+        <EditIncomeForm
+          income={sheet.data}
+          formAmountStr={formAmountStr}
+          setFormAmountStr={setFormAmountStr}
+          formSelectedId={formSelectedId}
+          setFormSelectedId={setFormSelectedId}
+          formDate={formDate}
+          setFormDate={setFormDate}
+          formNote={formNote}
+          setFormNote={setFormNote}
+          closeSheet={closeSheet}
+          showToast={showToast}
         />
       )}
 

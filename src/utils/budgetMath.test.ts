@@ -205,3 +205,12 @@ test('installments create monthly obligations only for active months', () => {
   assert.equal(activeInstallments(state, '2026-12').length, 0);
   assert.equal(totalInstallmentObligation(state, '2026-12'), 0);
 });
+
+test('unassigned surplus can remain Ready to Assign', () => {
+  const state = makeState({
+    accounts: [account('bank', 'checking', 5000000)],
+    budgets: { [month]: { groceries: 3000000 } }
+  });
+
+  assert.equal(getRTA(state, month), 2000000);
+});

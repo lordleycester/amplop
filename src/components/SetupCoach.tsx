@@ -4,11 +4,11 @@
  */
 
 import React from 'react';
-import { ArrowRight, Banknote, Check, Landmark, Target, X } from 'lucide-react';
+import { ArrowRight, Banknote, Check, Landmark, ReceiptText, Target, X } from 'lucide-react';
 import { useBudget } from '../context/BudgetContext';
 import type { Category } from '../types';
 
-export type SetupStep = 'targets' | 'accounts' | 'assign';
+export type SetupStep = 'targets' | 'accounts' | 'assign' | 'transactions';
 
 interface SetupCoachProps {
   step: SetupStep;
@@ -16,10 +16,11 @@ interface SetupCoachProps {
   onSetTarget: (category: Category) => void;
   onAddAccount: () => void;
   onAssignMoney: () => void;
+  onAddTransaction: () => void;
   onDismiss: () => void;
 }
 
-const stepOrder: SetupStep[] = ['targets', 'accounts', 'assign'];
+const stepOrder: SetupStep[] = ['targets', 'accounts', 'assign', 'transactions'];
 
 export const SetupCoach: React.FC<SetupCoachProps> = ({
   step,
@@ -27,6 +28,7 @@ export const SetupCoach: React.FC<SetupCoachProps> = ({
   onSetTarget,
   onAddAccount,
   onAssignMoney,
+  onAddTransaction,
   onDismiss
 }) => {
   const { state } = useBudget();
@@ -45,7 +47,7 @@ export const SetupCoach: React.FC<SetupCoachProps> = ({
   const content = {
     targets: {
       icon: Target,
-      eyebrow: 'Step 1 of 3',
+      eyebrow: 'Step 1 of 4',
       title: 'Set your targets',
       body: 'Targets are the plan: what rent, food, savings, subscriptions, and debt should need in a normal month.',
       action: firstTargetCandidate ? 'Set or Review a Target' : 'Add Categories First',
@@ -56,7 +58,7 @@ export const SetupCoach: React.FC<SetupCoachProps> = ({
     },
     accounts: {
       icon: Landmark,
-      eyebrow: 'Step 2 of 3',
+      eyebrow: 'Step 2 of 4',
       title: 'Add your accounts',
       body: 'Now tell Amplop what money actually exists: bank, cash, savings, and any credit cards.',
       action: 'Add an Account',
@@ -65,11 +67,20 @@ export const SetupCoach: React.FC<SetupCoachProps> = ({
     },
     assign: {
       icon: Banknote,
-      eyebrow: 'Step 3 of 3',
+      eyebrow: 'Step 3 of 4',
       title: 'Assign the money you have',
-      body: 'Fund the highest-priority targets first. If there is not enough for everything, that is useful information, not failure.',
+      body: 'Fund the highest-priority targets first.',
       action: 'Go to Budget',
       onAction: onAssignMoney,
+      next: 'Next: Add Transactions'
+    },
+    transactions: {
+      icon: ReceiptText,
+      eyebrow: 'Step 4 of 4',
+      title: 'Add actual transactions',
+      body: 'When money comes in or goes out, record it so your envelopes stay honest.',
+      action: 'Add a Transaction',
+      onAction: onAddTransaction,
       next: 'Finish Setup'
     }
   }[step];
@@ -100,7 +111,7 @@ export const SetupCoach: React.FC<SetupCoachProps> = ({
           </button>
         </div>
 
-        <div className="grid grid-cols-3 gap-1 px-3 pb-3" id="setup-coach-progress">
+        <div className="grid grid-cols-4 gap-1 px-3 pb-3" id="setup-coach-progress">
           {stepOrder.map((stepName, index) => (
             <div
               key={stepName}

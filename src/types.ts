@@ -121,7 +121,7 @@ export type SheetType =
   | 'add_installment' | 'edit_installment' | 'installment_detail'
   | 'add_recurring' | 'edit_recurring'
   | 'add_transfer' | 'pay_credit_card'
-  | 'transaction_detail' | 'transfer_detail' | 'income_detail' | 'edit_expense';
+  | 'transaction_detail' | 'transfer_detail' | 'income_detail' | 'edit_expense' | 'edit_income';
 
 type BaseSheetState = {
   isOpen: boolean;
@@ -137,5 +137,5 @@ export type SheetState =
   | (BaseSheetState & { type: 'edit_installment' | 'installment_detail'; data: Installment })
   | (BaseSheetState & { type: 'edit_recurring'; data: Recurring })
   | (BaseSheetState & { type: 'transaction_detail' | 'edit_expense'; data: Transaction })
-  | (BaseSheetState & { type: 'income_detail'; data: Income })
+  | (BaseSheetState & { type: 'income_detail' | 'edit_income'; data: Income })
   | (BaseSheetState & { type: 'transfer_detail'; data: Transfer });

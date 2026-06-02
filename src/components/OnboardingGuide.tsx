@@ -11,6 +11,7 @@ interface OnboardingGuideProps {
   isOpen: boolean;
   onClose: () => void;
   onStartBudgeting: () => void;
+  onSkipSurvey: () => void;
 }
 
 const steps = [
@@ -32,11 +33,11 @@ const steps = [
   {
     icon: CheckCircle2,
     title: 'Adjust as life happens',
-    body: 'If one envelope runs short, move money from another. The goal is not perfection; it is knowing what changed.'
+    body: 'If one envelope runs short, move money from another.'
   }
 ];
 
-export const OnboardingGuide: React.FC<OnboardingGuideProps> = ({ isOpen, onClose, onStartBudgeting }) => {
+export const OnboardingGuide: React.FC<OnboardingGuideProps> = ({ isOpen, onClose, onStartBudgeting, onSkipSurvey }) => {
   return (
     <AnimatePresence>
       {isOpen && (
@@ -79,7 +80,7 @@ export const OnboardingGuide: React.FC<OnboardingGuideProps> = ({ isOpen, onClos
                     Zero-based envelope budgeting means every rupiah gets a job before you spend it.
                   </p>
                   <p className="text-xs leading-relaxed text-gray-500 mt-2">
-                    It does not mean spending everything. Saving, debt payoff, school fees, and emergency funds are jobs too.
+                    That doesn&apos;t mean you spend everything. Investments, debt payoff, and emergency funds are jobs too.
                   </p>
                 </div>
 
@@ -103,21 +104,23 @@ export const OnboardingGuide: React.FC<OnboardingGuideProps> = ({ isOpen, onClos
                   })}
                 </div>
 
-                <div className="bg-emerald-50 border-2 border-gray-900 p-4">
-                  <h3 className="text-sm font-bold text-gray-900">A good first session</h3>
-                  <p className="text-xs leading-relaxed text-gray-600 mt-1">
-                    Set up accounts, add this month&apos;s income, press Auto-Assign if you want a starting point, then edit the envelopes until the plan feels honest.
-                  </p>
+                <div className="space-y-2">
+                  <button
+                    onClick={onStartBudgeting}
+                    className="w-full py-3 px-4 bg-emerald-800 text-white font-bold text-xs transition flex items-center justify-center gap-2"
+                    id="onboarding-done-btn"
+                  >
+                    Start with Category Survey
+                    <ArrowRight size={15} />
+                  </button>
+                  <button
+                    onClick={onSkipSurvey}
+                    className="w-full py-3 px-4 bg-white border-2 border-gray-900 text-gray-900 font-bold text-xs transition flex items-center justify-center gap-2"
+                    id="onboarding-skip-survey-btn"
+                  >
+                    Skip Survey
+                  </button>
                 </div>
-
-                <button
-                  onClick={onStartBudgeting}
-                  className="w-full py-3 px-4 bg-emerald-800 text-white font-bold text-xs transition flex items-center justify-center gap-2"
-                  id="onboarding-done-btn"
-                >
-                  Start Budgeting
-                  <ArrowRight size={15} />
-                </button>
               </div>
             </motion.div>
           </motion.div>
