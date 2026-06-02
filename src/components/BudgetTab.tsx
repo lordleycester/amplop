@@ -3,9 +3,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useBudget } from '../context/BudgetContext';
 import { fmtIDR, fmtCompact, monthLabel, monthLabelShort } from '../utils/helpers';
+import { getGroupColor } from '../utils/sharedUtils';
 import { ChevronDown, Plus, Target as TargetIcon, Layers, TrendingUp, Sparkles, CheckCircle2, PieChart, Activity, ShoppingBag } from 'lucide-react';
 import { Category, Group } from '../types';
 
@@ -40,12 +41,17 @@ export const BudgetTab: React.FC<BudgetTabProps> = ({
   const [editValue, setEditValue] = useState<string>('');
 
   // Find most recent previous budgeted month
-  const budgetsList = Object.keys(state.budgets).filter(k => k < viewMonth).sort();
+  const budgetsList = useMemo(
+    () => Object.keys(state.budgets).filter(k => k < viewMonth).sort(),
+    [state.budgets, viewMonth]
+  );
   const prevMonthStr = budgetsList.length > 0 ? budgetsList[budgetsList.length - 1] : null;
 
   // Has budget entries in current viewMonth
-  const hasCurrentBudgets = state.budgets[viewMonth] && 
-    (Object.values(state.budgets[viewMonth]) as number[]).some(v => (v || 0) > 0);
+  const hasCurrentBudgets = useMemo(
+    () => Boolean(state.budgets[viewMonth] && (Object.values(state.budgets[viewMonth]) as number[]).some(v => (v || 0) > 0)),
+    [state.budgets, viewMonth]
+  );
 
   // Group Collapsing / Expand
   const handleCopyPrev = () => {
@@ -55,30 +61,8 @@ export const BudgetTab: React.FC<BudgetTabProps> = ({
     }
   };
 
-  // Color logic rules
-  const getGroupColor = (groupId: string): string => {
-    const colors: Record<string, string> = {
-      bills: '#3b82f6',    // Blue
-      food: '#f59e0b',     // Amber
-      fun: '#8b5cf6',      // Purple
-      savings: '#10b981',  // Emerald
-      other: '#9ca3af',    // Slate
-    };
-    if (colors[groupId]) return colors[groupId];
-    // Simple deterministic hash
-    let hash = 0;
-    for (let i = 0; i < groupId.length; i++) {
-      hash = (hash * 31 + groupId.charCodeAt(i)) & 0xffffffff;
-    }
-    const fallbacks = ['#3b82f6', '#f59e0b', '#8b5cf6', '#10b981', '#ef4444', '#06b6d4', '#ec4899', '#84cc16'];
-    return fallbacks[Math.abs(hash) % fallbacks.length];
-  };
-
-  // Target math progress percent
-  const getTargetProgress = (cat: Category) => {
+  const calculateTargetProgress = (cat: Category, assigned: number, available: number) => {
     if (!cat.target) return null;
-    const assigned = getAssigned(cat.id, viewMonth);
-    const available = getAvailable(cat.id, viewMonth);
     const tg = cat.target;
 
     if (tg.type === 'monthly' || tg.type === 'monthly_builder') {
@@ -92,8 +76,7 @@ export const BudgetTab: React.FC<BudgetTabProps> = ({
     return null;
   };
 
-  const getAvailClass = (cat: Category): string => {
-    const avail = getAvailable(cat.id, viewMonth);
+  const getAvailClass = (cat: Category, avail: number, targetProgress: ReturnType<typeof calculateTargetProgress>): string => {
     if (avail < 0) return 'bg-red-50 text-red-700 border border-red-200';
     
     if (!cat.target) {
@@ -102,22 +85,18 @@ export const BudgetTab: React.FC<BudgetTabProps> = ({
         : 'bg-gray-100 text-gray-500 border border-gray-200/50';
     }
     
-    const tp = getTargetProgress(cat);
-    if (!tp) {
+    if (!targetProgress) {
       return avail > 0 
         ? 'bg-emerald-50 text-emerald-800 border border-emerald-100' 
         : 'bg-gray-100 text-gray-500 border border-gray-200/50';
     }
 
-    if (tp.over) return 'bg-red-50 text-red-700 border border-red-200';
-    if (!tp.funded && avail >= 0) return 'bg-amber-50 text-amber-700 border border-amber-200';
+    if (targetProgress.over) return 'bg-red-50 text-red-700 border border-red-200';
+    if (!targetProgress.funded && avail >= 0) return 'bg-amber-50 text-amber-700 border border-amber-200';
     return 'bg-emerald-50 text-emerald-800 border border-emerald-100';
   };
 
-  const getCategoryStatusText = (cat: Category) => {
-    const avail = getAvailable(cat.id, viewMonth);
-    const assigned = getAssigned(cat.id, viewMonth);
-    
+  const getCategoryStatusText = (cat: Category, assigned: number, avail: number) => {
     if (avail < 0) {
       return { cls: 'text-red-650 font-bold', text: `Overspent ${fmtCompact(-avail)}` };
     }
@@ -141,6 +120,24 @@ export const BudgetTab: React.FC<BudgetTabProps> = ({
     }
     return { cls: 'text-gray-400', text: 'No target' };
   };
+
+  const categoryMetrics = useMemo(() => {
+    return Object.fromEntries(state.categories.map(cat => {
+      const assigned = getAssigned(cat.id, viewMonth);
+      const spent = getSpent(cat.id, viewMonth);
+      const available = getAvailable(cat.id, viewMonth);
+      const targetProgress = calculateTargetProgress(cat, assigned, available);
+
+      return [cat.id, {
+        assigned,
+        spent,
+        available,
+        targetProgress,
+        availClass: getAvailClass(cat, available, targetProgress),
+        status: getCategoryStatusText(cat, assigned, available)
+      }];
+    }));
+  }, [state, viewMonth]);
 
   // Inline key/blur triggers
   const startEditing = (catId: string, currentAmount: number) => {
@@ -185,38 +182,52 @@ export const BudgetTab: React.FC<BudgetTabProps> = ({
   };
 
   // SPENDING ANALYTICS COMPILATIONS
-  const totalSpentAll = state.categories.reduce((sum, c) => sum + getSpent(c.id, viewMonth), 0);
-  const totalAssignedAll = state.categories.reduce((sum, c) => sum + getAssigned(c.id, viewMonth), 0);
-  const totalAvailableAll = state.categories.reduce((sum, c) => sum + getAvailable(c.id, viewMonth), 0);
+  const {
+    totalSpentAll,
+    totalAssignedAll,
+    totalAvailableAll,
+    groupAnalytics
+  } = useMemo(() => {
+    const totalSpent = state.categories.reduce((sum, c) => sum + categoryMetrics[c.id].spent, 0);
+    const totalAssigned = state.categories.reduce((sum, c) => sum + categoryMetrics[c.id].assigned, 0);
+    const totalAvailable = state.categories.reduce((sum, c) => sum + categoryMetrics[c.id].available, 0);
+
+    const analytics = state.groups.map(group => {
+      const groupCats = state.categories.filter(c => c.groupId === group.id);
+      const groupSpent = groupCats.reduce((sum, c) => sum + categoryMetrics[c.id].spent, 0);
+      const groupAssigned = groupCats.reduce((sum, c) => sum + categoryMetrics[c.id].assigned, 0);
+      const pctOfAllSpending = totalSpent > 0 ? (groupSpent / totalSpent) * 100 : 0;
+      const usagePct = groupAssigned > 0 ? (groupSpent / groupAssigned) * 100 : 0;
+      const color = getGroupColor(group.id);
+
+      return {
+        group,
+        spent: groupSpent,
+        assigned: groupAssigned,
+        pctOfAllSpending,
+        usagePct,
+        color,
+        categories: groupCats.map(c => ({
+          id: c.id,
+          name: c.name,
+          spent: categoryMetrics[c.id].spent,
+          assigned: categoryMetrics[c.id].assigned,
+          available: categoryMetrics[c.id].available
+        })).sort((a, b) => b.spent - a.spent)
+      };
+    }).sort((a, b) => b.spent - a.spent);
+
+    return {
+      totalSpentAll: totalSpent,
+      totalAssignedAll: totalAssigned,
+      totalAvailableAll: totalAvailable,
+      groupAnalytics: analytics
+    };
+  }, [categoryMetrics, state.categories, state.groups]);
+
   const incMonth = totalIncome(viewMonth);
   const savingsAmount = Math.max(0, incMonth - totalSpentAll);
   const savingsRate = incMonth > 0 ? (savingsAmount / incMonth) * 100 : 0;
-
-  // Prepare each group's total spent & assigned for visual progress
-  const groupAnalytics = state.groups.map(group => {
-    const groupCats = state.categories.filter(c => c.groupId === group.id);
-    const groupSpent = groupCats.reduce((sum, c) => sum + getSpent(c.id, viewMonth), 0);
-    const groupAssigned = groupCats.reduce((sum, c) => sum + getAssigned(c.id, viewMonth), 0);
-    const pctOfAllSpending = totalSpentAll > 0 ? (groupSpent / totalSpentAll) * 100 : 0;
-    const usagePct = groupAssigned > 0 ? (groupSpent / groupAssigned) * 100 : 0;
-    const color = getGroupColor(group.id);
-
-    return {
-      group,
-      spent: groupSpent,
-      assigned: groupAssigned,
-      pctOfAllSpending,
-      usagePct,
-      color,
-      categories: groupCats.map(c => ({
-        id: c.id,
-        name: c.name,
-        spent: getSpent(c.id, viewMonth),
-        assigned: getAssigned(c.id, viewMonth),
-        available: getAvailable(c.id, viewMonth)
-      })).sort((a, b) => b.spent - a.spent) // Sort categories by spent to find bottom line
-    };
-  }).sort((a, b) => b.spent - a.spent); // Sort group list by spent amount
 
   return (
     <div className="flex-1 flex flex-col min-h-0 bg-white" id="budget-tab-wrapper">
@@ -282,7 +293,7 @@ export const BudgetTab: React.FC<BudgetTabProps> = ({
                   .filter(c => c.groupId === group.id)
                   .sort((a, b) => a.sort - b.sort);
 
-                const groupAvailTotal = groupCats.reduce((sum, c) => sum + getAvailable(c.id, viewMonth), 0);
+                const groupAvailTotal = groupCats.reduce((sum, c) => sum + categoryMetrics[c.id].available, 0);
                 const groupColor = getGroupColor(group.id);
 
                 return (
@@ -335,14 +346,15 @@ export const BudgetTab: React.FC<BudgetTabProps> = ({
                           </div>
                         ) : (
                           groupCats.map(cat => {
-                            const assignedValue = getAssigned(cat.id, viewMonth);
-                            const spentValue = getSpent(cat.id, viewMonth);
-                            const availableValue = getAvailable(cat.id, viewMonth);
+                            const metrics = categoryMetrics[cat.id];
+                            const assignedValue = metrics.assigned;
+                            const spentValue = metrics.spent;
+                            const availableValue = metrics.available;
 
                             const isCurrentlyEditing = editingCatId === cat.id;
-                            const availStyleCls = getAvailClass(cat);
-                            const status = getCategoryStatusText(cat);
-                            const targetProgress = getTargetProgress(cat);
+                            const availStyleCls = metrics.availClass;
+                            const status = metrics.status;
+                            const targetProgress = metrics.targetProgress;
 
                             // Visual progress calculation
                             const progressPct = targetProgress 

@@ -3,9 +3,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useBudget } from '../context/BudgetContext';
 import { fmtIDR, isToday, fmtDate } from '../utils/helpers';
+import { getGroupColor } from '../utils/sharedUtils';
 import { Landmark, ArrowRightLeft, ArrowUpCircle, ArrowDownCircle, Info } from 'lucide-react';
 import { Transaction, Income, Transfer } from '../types';
 
@@ -22,25 +23,6 @@ export const HistoryTab: React.FC<HistoryTabProps> = ({
 }) => {
   const { state, filterCatId, setFilterCatId } = useBudget();
 
-  // Color logic function inside component
-  const getGroupColor = (groupId: string): string => {
-    const colors: Record<string, string> = {
-      bills: '#3b82f6',    // Blue
-      food: '#f59e0b',     // Amber
-      fun: '#8b5cf6',      // Purple
-      savings: '#10b981',  // Emerald
-      other: '#9ca3af',    // Slate
-    };
-    if (colors[groupId]) return colors[groupId];
-    // Simple deterministic hash
-    let hash = 0;
-    for (let i = 0; i < groupId.length; i++) {
-      hash = (hash * 31 + groupId.charCodeAt(i)) & 0xffffffff;
-    }
-    const fallbacks = ['#3b82f6', '#f59e0b', '#8b5cf6', '#10b981', '#ef4444', '#06b6d4', '#ec4899', '#84cc16'];
-    return fallbacks[Math.abs(hash) % fallbacks.length];
-  };
-
   // Compile history items from all sources
   interface HistoryItem {
     id: string;
@@ -54,69 +36,70 @@ export const HistoryTab: React.FC<HistoryTabProps> = ({
     raw: any;
   }
 
-  const items: HistoryItem[] = [];
+  const items = useMemo(() => {
+    const nextItems: HistoryItem[] = [];
 
-  // Expenses
-  if (filterCatId !== 'income') {
-    state.transactions
-      .filter(t => !filterCatId || t.catId === filterCatId)
-      .forEach(t => {
-        const cat = state.categories.find(c => c.id === t.catId);
-        const acc = state.accounts.find(a => a.id === t.accountId);
-        const color = cat ? getGroupColor(cat.groupId) : '#6b7280';
-        items.push({
-          id: t.id,
-          date: t.date,
-          type: 'expense',
-          amount: t.amount,
-          color,
-          label: cat ? cat.name : 'Deleted Expense',
-          note: t.note || '',
+    // Expenses
+    if (filterCatId !== 'income') {
+      state.transactions
+        .filter(t => !filterCatId || t.catId === filterCatId)
+        .forEach(t => {
+          const cat = state.categories.find(c => c.id === t.catId);
+          const acc = state.accounts.find(a => a.id === t.accountId);
+          const color = cat ? getGroupColor(cat.groupId) : '#6b7280';
+          nextItems.push({
+            id: t.id,
+            date: t.date,
+            type: 'expense',
+            amount: t.amount,
+            color,
+            label: cat ? cat.name : 'Deleted Expense',
+            note: t.note || '',
+            subtext: acc ? acc.name : '',
+            raw: t
+          });
+        });
+    }
+
+    // Incomes
+    if (!filterCatId || filterCatId === 'income') {
+      state.income.forEach(i => {
+        const acc = state.accounts.find(a => a.id === i.accountId);
+        nextItems.push({
+          id: i.id,
+          date: i.date,
+          type: 'income',
+          amount: i.amount,
+          color: '#16a34a', // Emerald Green
+          label: 'Income Inflow',
+          note: i.note || 'Ready to Assign',
           subtext: acc ? acc.name : '',
-          raw: t
+          raw: i
         });
       });
-  }
+    }
 
-  // Incomes
-  if (!filterCatId || filterCatId === 'income') {
-    state.income.forEach(i => {
-      const acc = state.accounts.find(a => a.id === i.accountId);
-      items.push({
-        id: i.id,
-        date: i.date,
-        type: 'income',
-        amount: i.amount,
-        color: '#16a34a', // Emerald Green
-        label: 'Income Inflow',
-        note: i.note || 'Ready to Assign',
-        subtext: acc ? acc.name : '',
-        raw: i
+    // Transfers
+    if (!filterCatId) {
+      state.transfers.forEach(tf => {
+        const fromAcc = state.accounts.find(a => a.id === tf.fromAccountId);
+        const toAcc = state.accounts.find(a => a.id === tf.toAccountId);
+        nextItems.push({
+          id: tf.id,
+          date: tf.date,
+          type: 'transfer',
+          amount: tf.amount,
+          color: '#8b5cf6', // Violet
+          label: `Transfer Account`,
+          note: tf.note || '',
+          subtext: `${fromAcc ? fromAcc.name : '?'} → ${toAcc ? toAcc.name : '?'}`,
+          raw: tf
+        });
       });
-    });
-  }
+    }
 
-  // Transfers
-  if (!filterCatId) {
-    state.transfers.forEach(tf => {
-      const fromAcc = state.accounts.find(a => a.id === tf.fromAccountId);
-      const toAcc   = state.accounts.find(a => a.id === tf.toAccountId);
-      items.push({
-        id: tf.id,
-        date: tf.date,
-        type: 'transfer',
-        amount: tf.amount,
-        color: '#8b5cf6', // Violet
-        label: `Transfer Account`,
-        note: tf.note || '',
-        subtext: `${fromAcc ? fromAcc.name : '?'} → ${toAcc ? toAcc.name : '?'}`,
-        raw: tf
-      });
-    });
-  }
-
-  // Sort by date descending
-  items.sort((a, b) => b.date.localeCompare(a.date));
+    return nextItems.sort((a, b) => b.date.localeCompare(a.date));
+  }, [filterCatId, state.accounts, state.categories, state.income, state.transactions, state.transfers]);
 
   // Handle cell click
   const handleItemClick = (item: HistoryItem) => {
@@ -125,7 +108,10 @@ export const HistoryTab: React.FC<HistoryTabProps> = ({
     if (item.type === 'transfer') onTransferClick(item.raw as Transfer);
   };
 
-  const activeCategory = state.categories.find(c => c.id === filterCatId);
+  const activeCategory = useMemo(
+    () => state.categories.find(c => c.id === filterCatId),
+    [filterCatId, state.categories]
+  );
 
   return (
     <div className="flex-1 flex flex-col min-h-0 bg-gray-50/50" id="tx-history-tab">

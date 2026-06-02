@@ -24,6 +24,8 @@ import {
   totalIncome as calculateTotalIncome,
   totalInstallmentObligation as calculateTotalInstallmentObligation
 } from '../utils/budgetMath';
+import { installmentPaidMonths } from '../utils/sharedUtils';
+import { clearPersistedState, loadPersistedState, savePersistedState } from '../storage/budgetStorage';
 
 interface BudgetContextType {
   state: AppState;
@@ -105,7 +107,6 @@ interface BudgetContextType {
   getSyncConfig: () => SyncConfig;
 }
 
-const STORAGE_KEY = 'amplop_v3_react';
 const SYNC_CONFIG_KEY = 'amplop_sync_config_v1';
 
 const DEFAULT_GROUPS: Group[] = [
@@ -135,89 +136,66 @@ const DEFAULT_CATEGORIES: Category[] = [
   { id: 'misc',      name: 'Other',          emoji: '', groupId: 'other',   sort: 1, target: null },
 ];
 
+const createDefaultState = (): AppState => ({
+  groups: DEFAULT_GROUPS,
+  categories: DEFAULT_CATEGORIES,
+  transactions: [],
+  income: [],
+  budgets: {},
+  accounts: DEFAULT_ACCOUNTS,
+  transfers: [],
+  installments: [],
+  recurring: []
+});
+
+const normalizeState = (rawState: Partial<AppState> | null | undefined): AppState => ({
+  groups: rawState?.groups || DEFAULT_GROUPS,
+  categories: rawState?.categories || DEFAULT_CATEGORIES,
+  transactions: rawState?.transactions || [],
+  income: rawState?.income || [],
+  budgets: rawState?.budgets || {},
+  accounts: rawState?.accounts || DEFAULT_ACCOUNTS,
+  transfers: rawState?.transfers || [],
+  installments: rawState?.installments || [],
+  recurring: rawState?.recurring || []
+});
+
 const BudgetContext = createContext<BudgetContextType | undefined>(undefined);
 
 export const BudgetProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [state, setState] = useState<AppState>(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        // Ensure properties exist due to incremental features
-        return {
-          groups: parsed.groups || DEFAULT_GROUPS,
-          categories: parsed.categories || DEFAULT_CATEGORIES,
-          transactions: parsed.transactions || [],
-          income: parsed.income || [],
-          budgets: parsed.budgets || {},
-          accounts: parsed.accounts || DEFAULT_ACCOUNTS,
-          transfers: parsed.transfers || [],
-          installments: parsed.installments || [],
-          recurring: parsed.recurring || []
-        };
-      }
-    } catch (e) {
-      console.error('Error loading state from localStorage:', e);
-    }
-    return {
-      groups: DEFAULT_GROUPS,
-      categories: DEFAULT_CATEGORIES,
-      transactions: [],
-      income: [],
-      budgets: {},
-      accounts: DEFAULT_ACCOUNTS,
-      transfers: [],
-      installments: [],
-      recurring: []
-    };
-  });
+  const [state, setState] = useState<AppState>(() => createDefaultState());
+  const [storageReady, setStorageReady] = useState(false);
 
   const [viewMonth, setViewMonth] = useState<string>(todayMonth);
   const [activeView, setActiveView] = useState<'budget' | 'history' | 'accounts' | 'settings' | 'cicilan'>('budget');
   const [filterCatId, setFilterCatId] = useState<string | null>(null);
   const [syncStatus, setSyncStatus] = useState<string>('Local only');
 
-  // Trigger save whenever state changes
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  }, [state]);
+    let cancelled = false;
 
-  // Installment helpers
-  const _instEndDate = (inst: Installment): string => {
-    let [y, mo] = inst.startDate.split('-').map(Number);
-    mo += inst.totalMonths - 1;
-    while (mo > 12) {
-      mo -= 12;
-      y++;
-    }
-    return y + '-' + String(mo).padStart(2, '0');
-  };
+    const loadState = async () => {
+      const persistedState = await loadPersistedState();
+      if (cancelled) return;
 
-  const _instIsActive = (inst: Installment, m: string): boolean => {
-    const end = _instEndDate(inst);
-    return m >= inst.startDate && m <= end;
-  };
+      if (persistedState) {
+        setState(normalizeState(persistedState));
+      }
+      setStorageReady(true);
+    };
 
-  const _instIsCompleted = (inst: Installment, m: string): boolean => {
-    return m > _instEndDate(inst);
-  };
+    loadState();
 
-  const _instRemainingMonths = (inst: Installment, m: string): number => {
-    const end = _instEndDate(inst);
-    if (m > end) return 0;
-    if (m < inst.startDate) return inst.totalMonths;
-    const [cy, cm] = m.split('-').map(Number);
-    const [ey, em] = end.split('-').map(Number);
-    return (ey - cy) * 12 + (em - cm) + 1;
-  };
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
-  const _instPaidMonths = (inst: Installment, m: string): number => {
-    if (m < inst.startDate) return 0;
-    const [sy, smo] = inst.startDate.split('-').map(Number);
-    const [cy, cm]  = m.split('-').map(Number);
-    const total = (cy - sy) * 12 + (cm - smo);
-    return Math.min(total, inst.totalMonths);
-  };
+  // Trigger save whenever state changes after IndexedDB/localStorage migration finishes.
+  useEffect(() => {
+    if (!storageReady) return;
+    savePersistedState(state);
+  }, [state, storageReady]);
 
   const activeInstallments = (month: string) => {
     return calculateActiveInstallments(state, month);
@@ -962,7 +940,7 @@ export const BudgetProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setState(prev => {
       const inst = prev.installments.find(i => i.id === instId);
       if (!inst) return prev;
-      const paid = _instPaidMonths(inst, viewMonth);
+      const paid = installmentPaidMonths(inst, viewMonth);
       if (paid <= 0) return prev;
       
       // Stop upcoming transactions
@@ -1103,34 +1081,15 @@ export const BudgetProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   // Global Persistence & Backup
   const clearAllData = () => {
-    setState({
-      groups: DEFAULT_GROUPS,
-      categories: DEFAULT_CATEGORIES,
-      transactions: [],
-      income: [],
-      budgets: {},
-      accounts: DEFAULT_ACCOUNTS,
-      transfers: [],
-      installments: [],
-      recurring: []
-    });
+    clearPersistedState();
+    setState(createDefaultState());
     setViewMonth(todayMonth());
   };
 
   const importBackup = (backupState: any): boolean => {
     try {
       if (backupState && Array.isArray(backupState.categories) && Array.isArray(backupState.transactions)) {
-        setState({
-          groups: backupState.groups || DEFAULT_GROUPS,
-          categories: backupState.categories || DEFAULT_CATEGORIES,
-          transactions: backupState.transactions || [],
-          income: backupState.income || [],
-          budgets: backupState.budgets || {},
-          accounts: backupState.accounts || DEFAULT_ACCOUNTS,
-          transfers: backupState.transfers || [],
-          installments: backupState.installments || [],
-          recurring: backupState.recurring || []
-        });
+        setState(normalizeState(backupState));
         return true;
       }
     } catch (e) {
@@ -1150,6 +1109,14 @@ export const BudgetProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     } catch {}
     return { url: '', anonKey: '', syncId: 'default', passphrase: '' };
   };
+
+  if (!storageReady) {
+    return (
+      <div className="h-full flex items-center justify-center bg-slate-50 text-xs font-semibold text-gray-400">
+        Loading Amplop...
+      </div>
+    );
+  }
 
   return (
     <BudgetContext.Provider value={{

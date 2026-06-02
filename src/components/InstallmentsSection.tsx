@@ -6,6 +6,7 @@
 import React, { useState } from 'react';
 import { useBudget } from '../context/BudgetContext';
 import { fmtIDR, fmtCompact } from '../utils/helpers';
+import { installmentEndDate, installmentPaidMonths, installmentRemainingMonths } from '../utils/sharedUtils';
 import { CreditCard, Plus, Calendar, CheckCircle, Clock, Tag, ChevronDown, Sparkles } from 'lucide-react';
 import { Installment } from '../types';
 
@@ -24,41 +25,13 @@ export const InstallmentsSection: React.FC<InstallmentsSectionProps> = ({
   const active = activeInstallments(viewMonth);
   const totalObligation = totalInstallmentObligation(viewMonth);
 
-  // Helper inside component to get remaining/paid progress metric
-  const _instEndDate = (inst: Installment): string => {
-    let [y, mo] = inst.startDate.split('-').map(Number);
-    mo += inst.totalMonths - 1;
-    while (mo > 12) {
-      mo -= 12;
-      y++;
-    }
-    return y + '-' + String(mo).padStart(2, '0');
-  };
-
-  const _instRemainingMonths = (inst: Installment, m: string): number => {
-    const end = _instEndDate(inst);
-    if (m > end) return 0;
-    if (m < inst.startDate) return inst.totalMonths;
-    const [cy, cm] = m.split('-').map(Number);
-    const [ey, em] = end.split('-').map(Number);
-    return (ey - cy) * 12 + (em - cm) + 1;
-  };
-
-  const _instPaidMonths = (inst: Installment, m: string): number => {
-    if (m < inst.startDate) return 0;
-    const [sy, smo] = inst.startDate.split('-').map(Number);
-    const [cy, cm]  = m.split('-').map(Number);
-    const total = (cy - sy) * 12 + (cm - smo);
-    return Math.min(total, inst.totalMonths);
-  };
-
   // Group all installments in system
   const allInstallments = state.installments || [];
   
   const categorized = allInstallments.reduce((acc, inst) => {
-    const end = _instEndDate(inst);
-    const remaining = _instRemainingMonths(inst, viewMonth);
-    const paid = _instPaidMonths(inst, viewMonth);
+    const end = installmentEndDate(inst);
+    const remaining = installmentRemainingMonths(inst, viewMonth);
+    const paid = installmentPaidMonths(inst, viewMonth);
     
     if (viewMonth > end && paid >= inst.totalMonths) {
       acc.completed.push(inst);
@@ -119,8 +92,8 @@ export const InstallmentsSection: React.FC<InstallmentsSectionProps> = ({
           ) : (
             <div className="bg-white border border-gray-150 rounded-md overflow-hidden divide-y divide-gray-100 shadow-sm" id="inst-active-list">
               {categorized.active.map(inst => {
-                const remaining = _instRemainingMonths(inst, viewMonth);
-                const paid = _instPaidMonths(inst, viewMonth);
+                const remaining = installmentRemainingMonths(inst, viewMonth);
+                const paid = installmentPaidMonths(inst, viewMonth);
                 const pct = inst.totalMonths > 0 ? (paid / inst.totalMonths) * 100 : 0;
                 const endingSoon = remaining <= 2 && remaining > 0;
                 const targetAccount = state.accounts.find(a => a.id === inst.accountId);

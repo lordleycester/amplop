@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useBudget } from '../context/BudgetContext';
 import { fmtIDR } from '../utils/helpers';
 import { 
@@ -24,15 +24,36 @@ export const AccountsTab: React.FC<AccountsTabProps> = ({
   onTransferClick,
   onPayCreditCardClick
 }) => {
-  const { state, viewMonth, getAccountBalance, getBudgetAccountsTotal, getNetWorth } = useBudget();
+  const { state, viewMonth, getAccountBalance, getNetWorth } = useBudget();
 
-  const accounts = state.accounts.slice().sort((a, b) => a.sort - b.sort);
-  const budgetAccounts = accounts.filter(a => a.onBudget);
-  const trackingAccounts = accounts.filter(a => !a.onBudget);
-
-  const budgetTotal = budgetAccounts.reduce((sum, a) => sum + getAccountBalance(a.id), 0);
-  const trackingTotal = trackingAccounts.reduce((sum, a) => sum + getAccountBalance(a.id), 0);
-  const netWorth = getNetWorth();
+  const accounts = useMemo(
+    () => state.accounts.slice().sort((a, b) => a.sort - b.sort),
+    [state.accounts]
+  );
+  const budgetAccounts = useMemo(
+    () => accounts.filter(a => a.onBudget),
+    [accounts]
+  );
+  const trackingAccounts = useMemo(
+    () => accounts.filter(a => !a.onBudget),
+    [accounts]
+  );
+  const accountBalances = useMemo(
+    () => Object.fromEntries(accounts.map(a => [a.id, getAccountBalance(a.id)])),
+    [accounts, state.income, state.transactions, state.transfers]
+  );
+  const budgetTotal = useMemo(
+    () => budgetAccounts.reduce((sum, a) => sum + accountBalances[a.id], 0),
+    [accountBalances, budgetAccounts]
+  );
+  const trackingTotal = useMemo(
+    () => trackingAccounts.reduce((sum, a) => sum + accountBalances[a.id], 0),
+    [accountBalances, trackingAccounts]
+  );
+  const netWorth = useMemo(
+    () => getNetWorth(),
+    [state.accounts, state.income, state.transactions, state.transfers]
+  );
 
   // Helper inside component to get account icons
   const getAccountIcon = (type: Account['type']) => {
@@ -108,7 +129,7 @@ export const AccountsTab: React.FC<AccountsTabProps> = ({
               <div className="p-4 text-center text-xs text-gray-400 italic">No budget accounts added yet.</div>
             ) : (
               budgetAccounts.map(a => {
-                const balance = getAccountBalance(a.id);
+                const balance = accountBalances[a.id];
                 const balColor = balance > 0 ? 'text-emerald-700 font-bold' : balance < 0 ? 'text-red-700 font-semibold' : 'text-gray-400';
                 
                 // Active installments summary (Only for credit cards)
@@ -157,7 +178,7 @@ export const AccountsTab: React.FC<AccountsTabProps> = ({
 
             <div className="bg-white rounded-lg border border-gray-150 divide-y divide-gray-100 overflow-hidden shadow-sm" id="acc-tracking-list">
               {trackingAccounts.map(a => {
-                const balance = getAccountBalance(a.id);
+                const balance = accountBalances[a.id];
                 const balColor = balance > 0 ? 'text-emerald-700 font-bold' : balance < 0 ? 'text-red-700 font-semibold' : 'text-gray-400';
 
                 return (

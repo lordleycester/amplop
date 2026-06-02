@@ -4,6 +4,7 @@
  */
 
 import type { Account, AppState, Installment } from '../types';
+import { installmentIsActive } from './sharedUtils';
 
 export function getAccountBalance(state: AppState, accountId: string): number {
   const acc = state.accounts.find(a => a.id === accountId);
@@ -98,21 +99,6 @@ export function getAvailable(state: AppState, catId: string, month: string): num
   }
 
   return assigned - spent;
-}
-
-export function installmentEndDate(inst: Installment): string {
-  let [y, mo] = inst.startDate.split('-').map(Number);
-  mo += inst.totalMonths - 1;
-  while (mo > 12) {
-    mo -= 12;
-    y++;
-  }
-  return y + '-' + String(mo).padStart(2, '0');
-}
-
-export function installmentIsActive(inst: Installment, month: string): boolean {
-  const end = installmentEndDate(inst);
-  return month >= inst.startDate && month <= end;
 }
 
 export function activeInstallments(state: AppState, month: string): Installment[] {
