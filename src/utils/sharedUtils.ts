@@ -5,12 +5,33 @@
 
 import type { Installment } from '../types';
 
+export const FALLBACK_GROUP_COLORS = [
+  '#3b82f6',
+  '#f59e0b',
+  '#8b5cf6',
+  '#10b981',
+  '#ef4444',
+  '#06b6d4',
+  '#ec4899',
+  '#84cc16',
+  '#f97316',
+  '#14b8a6',
+  '#6366f1',
+  '#a855f7'
+];
+
 export function getGroupColor(groupId: string): string {
   const colors: Record<string, string> = {
+    needs: '#2563eb',
+    wants: '#8b5cf6',
+    subscriptions: '#d97706',
+    debt: '#dc2626',
+    savings: '#059669',
+
+    // Legacy group IDs kept for imported or existing budgets.
     bills: '#3b82f6',
     food: '#f59e0b',
     fun: '#8b5cf6',
-    savings: '#10b981',
     other: '#9ca3af',
   };
   if (colors[groupId]) return colors[groupId];
@@ -19,8 +40,7 @@ export function getGroupColor(groupId: string): string {
   for (let i = 0; i < groupId.length; i++) {
     hash = (hash * 31 + groupId.charCodeAt(i)) & 0xffffffff;
   }
-  const fallbacks = ['#3b82f6', '#f59e0b', '#8b5cf6', '#10b981', '#ef4444', '#06b6d4', '#ec4899', '#84cc16'];
-  return fallbacks[Math.abs(hash) % fallbacks.length];
+  return FALLBACK_GROUP_COLORS[Math.abs(hash) % FALLBACK_GROUP_COLORS.length];
 }
 
 export function installmentEndDate(inst: Installment): string {

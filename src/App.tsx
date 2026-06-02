@@ -35,14 +35,21 @@ import {
 import { 
   Toast 
 } from './components/Toast';
+import { CategorySurvey, type StarterCategoryInput } from './components/CategorySurvey';
+import { OnboardingGuide } from './components/OnboardingGuide';
+import { SetupCoach, type SetupStep } from './components/SetupCoach';
 import { AppBottomSheets } from './components/sheets/AppBottomSheets';
 import { 
   Wallet, List, Landmark, Settings, ChevronLeft, ChevronRight, HelpCircle, AlertCircle, CreditCard
 } from 'lucide-react';
+import type { Category } from './types';
+
+const ONBOARDING_SEEN_KEY = 'amplop_onboarding_seen_v1';
 
 function MainAppContent() {
   const {
     state,
+    hasExistingData,
     viewMonth,
     setViewMonth,
     activeView,
@@ -50,6 +57,7 @@ function MainAppContent() {
     filterCatId,
     setFilterCatId,
     getRTA,
+    applyStarterCategories,
     deleteCategory,
     deleteGroup,
     deleteAccount,
@@ -80,8 +88,64 @@ function MainAppContent() {
     setConfirm({ isOpen: true, title, message, onConfirm });
   };
 
+  const [onboardingDismissed, setOnboardingDismissed] = useState(() => {
+    try {
+      return localStorage.getItem(ONBOARDING_SEEN_KEY) === 'true';
+    } catch {
+      return false;
+    }
+  });
+  const [guideOpenedManually, setGuideOpenedManually] = useState(false);
+  const [categorySurveyOpen, setCategorySurveyOpen] = useState(false);
+  const [setupCoachOpen, setSetupCoachOpen] = useState(false);
+  const [setupStep, setSetupStep] = useState<SetupStep>('targets');
+
+  const closeOnboarding = () => {
+    try {
+      localStorage.setItem(ONBOARDING_SEEN_KEY, 'true');
+    } catch {}
+    setOnboardingDismissed(true);
+    setGuideOpenedManually(false);
+  };
+
+  const openOnboarding = () => {
+    setGuideOpenedManually(true);
+  };
+
+  const showOnboarding = guideOpenedManually || (!hasExistingData && !onboardingDismissed);
+
   const { sheet, openSheet, closeSheet } = useSheetController();
   const sheetForm = useSheetFormState(sheet, state.groups[0]?.id || '');
+
+  const startBudgetingGuide = () => {
+    closeOnboarding();
+    setSetupCoachOpen(false);
+    setCategorySurveyOpen(true);
+  };
+
+  const applyCategorySurvey = (categories: StarterCategoryInput[]) => {
+    applyStarterCategories(categories);
+    setCategorySurveyOpen(false);
+    setSetupCoachOpen(true);
+    setSetupStep('targets');
+    setActiveView('budget');
+    showToast('Starter categories created. Next: set targets for the envelopes that matter most.', null, undefined);
+  };
+
+  const openSetupTarget = (category: Category) => {
+    setActiveView('budget');
+    openSheet('set_target', `Set Target: ${category.name}`, category);
+  };
+
+  const openSetupAccount = () => {
+    setActiveView('accounts');
+    openSheet('add_account', 'Add Account');
+  };
+
+  const openSetupAssignMoney = () => {
+    setActiveView('budget');
+    showToast('Use Auto-Assign or tap an Assigned amount to fund categories.', null, undefined);
+  };
 
   return (
     <div className="flex flex-col h-full max-w-[480px] mx-auto bg-slate-50 relative border-x border-gray-200 select-none shadow-xl overflow-hidden font-sans" id="app-viewport">
@@ -119,6 +183,17 @@ function MainAppContent() {
 
       {/* 2. Scrollable Body Area */}
       <div className="flex-1 flex flex-col min-h-0 select-none" id="content-body">
+        {setupCoachOpen && (
+          <SetupCoach
+            step={setupStep}
+            onStepChange={setSetupStep}
+            onSetTarget={openSetupTarget}
+            onAddAccount={openSetupAccount}
+            onAssignMoney={openSetupAssignMoney}
+            onDismiss={() => setSetupCoachOpen(false)}
+          />
+        )}
+
         {activeView === 'budget' && (
           <>
             {/* Top ready to assign overview */}
@@ -169,6 +244,7 @@ function MainAppContent() {
 
         {activeView === 'settings' && (
           <SettingsTab 
+            onOpenGuide={openOnboarding}
             onAddGroupClick={() => openSheet('add_group', 'New Group')}
             onEditGroupClick={(g) => openSheet('edit_group', 'Rename Group', g)}
             onDeleteGroupClick={(g) => showConfirm(`Delete Group "${g.name}"?`, `This moves orphaned categories into remaining groups.`, () => deleteGroup(g.id))}
@@ -296,6 +372,18 @@ function MainAppContent() {
         closeSheet={closeSheet}
         showToast={showToast}
         showConfirm={showConfirm}
+      />
+
+      <OnboardingGuide
+        isOpen={showOnboarding}
+        onClose={closeOnboarding}
+        onStartBudgeting={startBudgetingGuide}
+      />
+
+      <CategorySurvey
+        isOpen={categorySurveyOpen}
+        onClose={() => setCategorySurveyOpen(false)}
+        onApply={applyCategorySurvey}
       />
 
     </div>

@@ -13,7 +13,8 @@ Amplop works locally in the browser by default. If you want to use it across mul
 ## What It Does
 
 - Tracks income as money that is ready to assign.
-- Organizes spending into budget groups and categories.
+- Builds starter budget categories from an onboarding survey.
+- Organizes spending into budget groups and categories, including Needs, Wants, Subscriptions, Debt, and Savings Goals.
 - Lets each category carry monthly assignments, targets, spending, and remaining available balance.
 - Tracks budget accounts, cash, credit cards, and off-budget tracking accounts.
 - Records expenses, income, and account transfers.
@@ -46,8 +47,6 @@ npm run dev
 
 The dev server runs on port `3000` by default.
 
-If your shell cannot find Node, make sure Node.js is installed and available on your `PATH`. On this machine, Node may also be available through `nvm`.
-
 ## Other Commands
 
 ```bash
@@ -59,17 +58,21 @@ npm test
 
 `npm run lint` currently runs TypeScript checking with `tsc --noEmit`.
 
-The budget math tests live in `src/utils/budgetMath.test.ts`. In environments where the default test command has trouble with sandboxed IPC, this focused command also works:
-
-```bash
-node --import tsx --test src/utils/budgetMath.test.ts
-```
+The budget math tests live in `src/utils/budgetMath.test.ts`.
 
 ## Data And Privacy
 
 Amplop is local-first. Budget data is saved in browser IndexedDB through Dexie, with a one-time migration path from the older `localStorage` budget key. Clearing browser data can still remove your budget unless you export a backup first.
 
 Use the JSON export/import flow for backups. If Supabase sync is configured, the app derives an encryption key from the configured passphrase and uses browser crypto before syncing data between devices. Sync configuration itself is small and remains in `localStorage`.
+
+## Onboarding
+
+The first-run guide introduces zero-based envelope budgeting, then starts a category survey. The survey asks about household, home, debt, transportation, regular spending, domestic services, subscriptions, irregular expenses, savings goals, and lifestyle spending.
+
+Survey answers create a draft category plan that users can review before saving. After categories are created, Amplop guides the user through setting targets, adding accounts, and assigning money.
+
+The survey plan lives in `docs/category-survey-plan.md`.
 
 ## Project Shape
 
