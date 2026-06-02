@@ -11,6 +11,7 @@ type SheetPayloadMap = {
   edit_group: Group;
   edit_category: Category;
   category_detail: Category;
+  category_activity: Category;
   set_target: Category;
   move_money: Category;
   edit_account: Account;

@@ -8,7 +8,8 @@ import { BottomSheet } from '../BottomSheet';
 import { AccountDetailSheet } from './AccountDetailSheet';
 import { AddAccountForm, EditAccountForm } from './AccountForms';
 import { AddIncomeForm } from './AddIncomeForm';
-import { CategoryDetailSheet, MoveMoneyForm, SetTargetForm } from './CategoryDetailSheets';
+import { AssignReadyToAssignForm } from './AssignReadyToAssignForm';
+import { CategoryActivitySheet, CategoryDetailSheet, MoveMoneyForm, SetTargetForm } from './CategoryDetailSheets';
 import { AddCategoryForm, EditCategoryForm } from './CategoryForms';
 import { AddGroupForm, EditGroupForm } from './GroupForms';
 import { AddInstallmentForm, EditInstallmentForm, InstallmentDetailSheet } from './InstallmentForms';
@@ -118,9 +119,13 @@ export const AppBottomSheets: React.FC<AppBottomSheetsProps> = ({
       {sheet.type === 'category_detail' && sheet.data && (
         <CategoryDetailSheet
           category={sheet.data}
-          onSetTarget={(category) => openSheet('set_target', 'Set Target', category)}
-          onMoveMoney={(category) => openSheet('move_money', 'Move Money', category)}
+          onSetTarget={(category) => openSheet('set_target', `Set Target for ${category.name}`, category)}
+          onMoveMoney={(category) => openSheet('move_money', `Move Money from ${category.name}`, category)}
         />
+      )}
+
+      {sheet.type === 'category_activity' && sheet.data && (
+        <CategoryActivitySheet category={sheet.data} />
       )}
 
       {sheet.type === 'set_target' && sheet.data && (
@@ -178,6 +183,15 @@ export const AppBottomSheets: React.FC<AppBottomSheetsProps> = ({
           setFormDate={setFormDate}
           formNote={formNote}
           setFormNote={setFormNote}
+          closeSheet={closeSheet}
+          showToast={showToast}
+        />
+      )}
+
+      {sheet.type === 'assign_rta' && (
+        <AssignReadyToAssignForm
+          formSelectedId={formSelectedId}
+          setFormSelectedId={setFormSelectedId}
           closeSheet={closeSheet}
           showToast={showToast}
         />

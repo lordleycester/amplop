@@ -116,8 +116,8 @@ export interface AppState {
 
 export type SheetType =
   | 'add_category' | 'edit_category' | 'add_group' | 'edit_group'
-  | 'category_detail' | 'set_target' | 'move_money'
-  | 'quick_add' | 'add_income' | 'add_account' | 'edit_account' | 'account_detail'
+  | 'category_detail' | 'category_activity' | 'set_target' | 'move_money'
+  | 'quick_add' | 'add_income' | 'assign_rta' | 'add_account' | 'edit_account' | 'account_detail'
   | 'add_installment' | 'edit_installment' | 'installment_detail'
   | 'add_recurring' | 'edit_recurring'
   | 'add_transfer' | 'pay_credit_card'
@@ -129,10 +129,10 @@ type BaseSheetState = {
 };
 
 export type SheetState =
-  | (BaseSheetState & { type: 'add_group' | 'quick_add' | 'add_income' | 'add_account' | 'add_installment' | 'add_recurring' | 'add_transfer' | 'pay_credit_card' })
+  | (BaseSheetState & { type: 'add_group' | 'quick_add' | 'add_income' | 'assign_rta' | 'add_account' | 'add_installment' | 'add_recurring' | 'add_transfer' | 'pay_credit_card' })
   | (BaseSheetState & { type: 'add_category'; data?: string })
   | (BaseSheetState & { type: 'edit_group'; data: Group })
-  | (BaseSheetState & { type: 'edit_category' | 'category_detail' | 'set_target' | 'move_money'; data: Category })
+  | (BaseSheetState & { type: 'edit_category' | 'category_detail' | 'category_activity' | 'set_target' | 'move_money'; data: Category })
   | (BaseSheetState & { type: 'edit_account' | 'account_detail'; data: Account })
   | (BaseSheetState & { type: 'edit_installment' | 'installment_detail'; data: Installment })
   | (BaseSheetState & { type: 'edit_recurring'; data: Recurring })

@@ -43,7 +43,7 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({ isOpen, onClose, title
 
             {/* Title / Header */}
             <div className="flex items-center justify-between px-6 pb-3 border-b border-gray-100 flex-shrink-0" id="sheet-header">
-              <h3 className="text-base font-semibold tracking-tight text-gray-800">{title}</h3>
+              <h3 className="text-base font-semibold tracking-tight text-gray-800 truncate pr-3 min-w-0">{title}</h3>
               <button
                 onClick={onClose}
                 className="text-gray-400 hover:text-gray-600 transition-colors p-1"

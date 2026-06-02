@@ -112,3 +112,117 @@ export function totalInstallmentObligation(state: AppState, month: string): numb
 export function accountIsOnBudgetType(type: Account['type']): boolean {
   return ['checking', 'savings', 'credit_card', 'cash'].includes(type);
 }
+
+function getAvailableWithBudget(state: AppState, catId: string, month: string, activeBudget: Record<string, number>): number {
+  let assigned = 0;
+  let spent = 0;
+
+  const monthsSet = new Set<string>();
+  state.transactions.forEach(t => monthsSet.add(t.date.substring(0, 7)));
+  state.income.forEach(i => monthsSet.add(i.date.substring(0, 7)));
+  Object.keys(state.budgets).forEach(m => monthsSet.add(m));
+  monthsSet.add(month);
+
+  const sortedMonths = Array.from(monthsSet)
+    .filter(m => m <= month)
+    .sort();
+
+  for (const m of sortedMonths) {
+    assigned += m === month ? (activeBudget[catId] || 0) : (state.budgets[m]?.[catId] || 0);
+    spent += state.transactions
+      .filter(t => t.catId === catId && t.date.substring(0, 7) === m)
+      .reduce((s, t) => s + t.amount, 0);
+  }
+
+  return assigned - spent;
+}
+
+function targetSortValue(type: string | undefined): number {
+  if (type === 'monthly_builder' || type === 'by_date') return 0;
+  if (!type || type === 'none') return 1;
+  if (type === 'monthly') return 2;
+  return 3;
+}
+
+function getReadyToAssignWithBudget(state: AppState, month: string, activeBudget: Record<string, number>): number {
+  let assigned = 0;
+
+  for (const [budgetMonth, categoryAssignedMap] of Object.entries(state.budgets)) {
+    if (budgetMonth > month) continue;
+    const monthBudget = budgetMonth === month ? activeBudget : categoryAssignedMap;
+    for (const amount of Object.values(monthBudget)) {
+      assigned += amount || 0;
+    }
+  }
+
+  return totalIncome(state, month) - assigned;
+}
+
+export function rebalanceBudgetAssignments(state: AppState, month: string): Record<string, number> {
+  const activeBudget = { ...(state.budgets[month] || {}) };
+
+  const getCategoryAssigned = (catId: string) => activeBudget[catId] || 0;
+  const getCategoryAvailable = (catId: string) => getAvailableWithBudget(state, catId, month, activeBudget);
+
+  const getCategorySurplus = (catId: string) => {
+    const assignedThisMonth = getCategoryAssigned(catId);
+    const available = getCategoryAvailable(catId);
+    if (assignedThisMonth <= 0 || available <= 0) return 0;
+    return Math.min(assignedThisMonth, available);
+  };
+
+  const donorQueue = state.categories
+    .map((cat, index) => ({
+      cat,
+      amount: getCategorySurplus(cat.id),
+      priority: targetSortValue(cat.target?.type),
+      index
+    }))
+    .filter(item => item.amount > 0)
+    .sort((a, b) => {
+      if (a.priority !== b.priority) return a.priority - b.priority;
+      return a.index - b.index;
+    });
+
+  const needs = state.categories
+    .map((cat, index) => ({
+      cat,
+      amount: Math.max(0, -getCategoryAvailable(cat.id)),
+      index
+    }))
+    .filter(item => item.amount > 0)
+    .sort((a, b) => a.index - b.index);
+
+  let readyToAssign = Math.max(0, getReadyToAssignWithBudget(state, month, activeBudget));
+  for (const need of needs) {
+    if (readyToAssign <= 0) break;
+    const moved = Math.min(readyToAssign, need.amount);
+    activeBudget[need.cat.id] = (activeBudget[need.cat.id] || 0) + moved;
+    need.amount -= moved;
+    readyToAssign -= moved;
+  }
+
+  let donorIndex = 0;
+  for (const need of needs) {
+    let remaining = need.amount;
+    while (remaining > 0 && donorIndex < donorQueue.length) {
+      const donor = donorQueue[donorIndex];
+      if (donor.cat.id === need.cat.id || donor.amount <= 0) {
+        donorIndex++;
+        continue;
+      }
+
+      const moved = Math.min(donor.amount, remaining);
+      activeBudget[donor.cat.id] = (activeBudget[donor.cat.id] || 0) - moved;
+      activeBudget[need.cat.id] = (activeBudget[need.cat.id] || 0) + moved;
+      donor.amount -= moved;
+      remaining -= moved;
+
+      if (donor.amount <= 0) donorIndex++;
+    }
+
+    if (donorIndex >= donorQueue.length) break;
+  }
+
+  return activeBudget;
+}

@@ -145,21 +145,23 @@ div[id^="inst-progress-"] > div {
 }
 
 /* Highlight current targets and availability chips */
-span[id^="cat-target-badge-"] {
+[id^="cat-target-badge-"] {
   border: 1px solid #1E1E1E !important;
   background-color: #FAF7F2 !important;
   border-radius: 0px !important;
   color: #1E1E1E !important;
   font-weight: 700 !important;
+  appearance: none !important;
 }
 
-span[id^="cat-avail-badge-"] {
+[id^="cat-avail-badge-"] {
   border-radius: 0px !important;
   border: 1px solid #1E1E1E !important;
   text-transform: uppercase;
   font-weight: 700 !important;
   font-family: "JetBrains Mono", monospace !important;
   box-shadow: 1.5px 1.5px 0px 0px #1E1E1E !important;
+  appearance: none !important;
 }
 
 /* Input boxes & form fields styling */

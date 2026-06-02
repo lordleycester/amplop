@@ -9,17 +9,19 @@ import { fmtIDR } from '../utils/helpers';
 
 interface ReadyToAssignProps {
   onAddIncomeClick: () => void;
+  onAssignReadyToAssignClick: () => void;
   onSetToast: (msg: string, actionLabel?: string, actionFn?: () => void) => void;
   onShowConfirm: (title: string, msg: string, confirmFn: () => void) => void;
 }
 
 export const ReadyToAssign: React.FC<ReadyToAssignProps> = ({
   onAddIncomeClick,
+  onAssignReadyToAssignClick,
   onSetToast,
   onShowConfirm
 }) => {
   const { 
-    viewMonth, getRTA, getAgeOfMoney, autoAssign, rebalanceAssignments, resetAssignments, state, totalIncome
+    viewMonth, getRTA, getAgeOfMoney, autoAssign, resetAssignments, state, totalIncome
   } = useBudget();
 
   const rta = getRTA(viewMonth);
@@ -55,19 +57,9 @@ export const ReadyToAssign: React.FC<ReadyToAssignProps> = ({
     );
   };
 
-  const handleRebalance = () => {
-    rebalanceAssignments(viewMonth);
-    // Find out if any change was made visually by recalculating.
-    onSetToast('Assignments rebalanced', null, undefined);
-  };
-
   const handleAutoAssign = () => {
-    if (rta <= 0) {
-      onSetToast('Nothing left to assign', null, undefined);
-      return;
-    }
     autoAssign(viewMonth);
-    onSetToast('Auto-assigned what your targets need. Any extra stayed Ready to Assign.', null, undefined);
+    onSetToast('Auto-assigned targets and covered overspending where possible.', null, undefined);
   };
 
   return (
@@ -94,20 +86,22 @@ export const ReadyToAssign: React.FC<ReadyToAssignProps> = ({
         >
           Reset
         </button>
-        <button 
-          onClick={handleRebalance}
-          className="whitespace-nowrap px-2.5 py-1.5 border border-emerald-650/20 text-emerald-850 hover:bg-emerald-50 rounded text-[10px] font-bold tracking-wide transition select-none"
-          id="rta-rebalance-btn"
-        >
-          Rebalance
-        </button>
-        {rta > 0 && (
+        {state.categories.length > 0 && (
           <button 
             onClick={handleAutoAssign}
             className="whitespace-nowrap px-2.5 py-1.5 border border-emerald-650/20 text-emerald-850 hover:bg-emerald-50 rounded text-[10px] font-bold tracking-wide transition select-none"
             id="rta-auto-btn"
           >
             Auto-Assign
+          </button>
+        )}
+        {rta > 0 && state.categories.length > 0 && (
+          <button
+            onClick={onAssignReadyToAssignClick}
+            className="whitespace-nowrap px-2.5 py-1.5 border border-emerald-650/20 text-emerald-850 hover:bg-emerald-50 rounded text-[10px] font-bold tracking-wide transition select-none"
+            id="rta-assign-btn"
+          >
+            Assign Leftover
           </button>
         )}
         <button 

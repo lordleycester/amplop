@@ -6,7 +6,7 @@
 import React from 'react';
 import { ArrowLeftRight } from 'lucide-react';
 import { useBudget } from '../../context/BudgetContext';
-import { fmtIDR, monthLabelShort, parseAmount } from '../../utils/helpers';
+import { fmtDateShort, fmtIDR, monthLabelShort, parseAmount } from '../../utils/helpers';
 import { getGroupColor } from '../../utils/sharedUtils';
 import type { Category } from '../../types';
 import type { AmountFormState, SelectFormState, SheetCallbacks, TargetFormState } from './SheetFormProps';
@@ -92,6 +92,56 @@ export const CategoryDetailSheet: React.FC<CategoryDetailSheetProps> = ({
             ))
           )}
         </div>
+      </div>
+    </div>
+  );
+};
+
+interface CategoryActivitySheetProps {
+  category: Category;
+}
+
+export const CategoryActivitySheet: React.FC<CategoryActivitySheetProps> = ({ category }) => {
+  const { state, viewMonth, getSpent } = useBudget();
+  const spent = getSpent(category.id, viewMonth);
+
+  const thisMonthsTxs = state.transactions
+    .filter(t => t.catId === category.id && t.date.substring(0, 7) === viewMonth)
+    .sort((a, b) => b.date.localeCompare(a.date));
+
+  return (
+    <div className="space-y-4" id="cat-activity-sheet">
+      <div className="flex items-center justify-between border border-gray-150 bg-gray-50 rounded p-3 select-none">
+        <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
+          Spent {monthLabelShort(viewMonth)}
+        </span>
+        <span className="font-mono text-sm font-bold text-red-650">
+          {spent > 0 ? `-${fmtIDR(spent)}` : 'Rp0'}
+        </span>
+      </div>
+
+      <div className="border border-gray-150 rounded-md overflow-hidden divide-y divide-gray-100 bg-white" id="cat-activity-list">
+        {thisMonthsTxs.length === 0 ? (
+          <div className="p-5 text-center text-xs text-gray-400 italic">
+            No activity for this category this month.
+          </div>
+        ) : (
+          thisMonthsTxs.map(tx => {
+            const account = state.accounts.find(a => a.id === tx.accountId);
+
+            return (
+              <div key={tx.id} className="flex items-center justify-between gap-3 p-3 text-xs" id={`cat-activity-row-${tx.id}`}>
+                <div className="min-w-0">
+                  <div className="font-semibold text-gray-700 truncate">{tx.note || 'Expense'}</div>
+                  <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">
+                    {fmtDateShort(tx.date)}{account ? ` · ${account.name}` : ''}
+                  </div>
+                </div>
+                <span className="font-mono font-bold text-red-650 shrink-0">-{fmtIDR(tx.amount)}</span>
+              </div>
+            );
+          })
+        )}
       </div>
     </div>
   );
@@ -208,41 +258,12 @@ export const MoveMoneyForm: React.FC<MoveMoneyFormProps> = ({
   const { state, viewMonth, getAvailable, getAssigned, setAssigned } = useBudget();
   const srcAvail = getAvailable(sourceCategory.id, viewMonth);
   const others = state.categories.filter(c => c.id !== sourceCategory.id);
+  const cleanAmount = parseAmount(formAmountStr);
 
   return (
     <div className="space-y-4 font-sans" id="form-move-money">
-      <div className="text-xs text-gray-500 rounded p-2 border border-gray-150 bg-gray-50 select-none">
-        Sumber: <span className="font-semibold text-gray-700">{sourceCategory.name}</span> (<span className="font-bold font-mono text-emerald-700">{fmtIDR(srcAvail)}</span> available)
-      </div>
-
-      <div className="space-y-1.5" id="move-dest-list">
-        <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest pl-0.5">Ke Kategori:</label>
-        <div className="max-h-[140px] overflow-y-auto divide-y divide-gray-100 rounded-md border border-gray-150 shadow-sm bg-white" id="move-dest-elements">
-          {others.map(c => {
-            const av = getAvailable(c.id, viewMonth);
-            const isSelected = formSelectedId === c.id;
-            const dotColor = getGroupColor(c.groupId);
-
-            return (
-              <div
-                key={c.id}
-                onClick={() => setFormSelectedId(c.id)}
-                className={`flex justify-between items-center p-3 select-none cursor-pointer transition ${isSelected ? 'bg-emerald-50/70' : 'hover:bg-slate-50/50'}`}
-                id={`move-row-${c.id}`}
-              >
-                <div className="flex items-center gap-2 min-w-0" id={`move-row-left-${c.id}`}>
-                  <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: dotColor }} />
-                  <span className="text-xs font-semibold text-gray-700 truncate">{c.name}</span>
-                </div>
-                <span className="text-[10px] text-gray-400 font-bold font-mono">{fmtIDR(av)} av</span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      <div>
-        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1 tracking-wider">Amount</label>
+      <div className="space-y-2">
+        <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider">Amount To Move</label>
         <input
           type="text"
           inputMode="decimal"
@@ -253,14 +274,45 @@ export const MoveMoneyForm: React.FC<MoveMoneyFormProps> = ({
           className="w-full text-center px-4 py-3 bg-slate-50 border border-gray-200 rounded font-mono text-xl font-bold select-all outline-none focus:bg-white focus:border-emerald-600 transition"
           id="move-amt-input"
         />
-        <div className="text-center font-bold text-emerald-700 font-mono text-xs mt-1.5">
-          {formAmountStr ? fmtIDR(parseAmount(formAmountStr)) : ''}
+        {srcAvail > 0 && (
+          <button
+            onClick={() => setFormAmountStr(String(srcAvail))}
+            className="w-full py-2 px-3 border border-emerald-800/20 text-emerald-800 bg-white hover:bg-emerald-50 rounded-md text-xs font-semibold transition"
+            id="move-all-available-btn"
+          >
+            Use all available ({fmtIDR(srcAvail)})
+          </button>
+        )}
+      </div>
+
+      <div className="space-y-1.5" id="move-dest-list">
+        <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest pl-0.5">Move To</label>
+        <div className="max-h-[180px] overflow-y-auto divide-y divide-gray-100 rounded-md border border-gray-150 shadow-sm bg-white" id="move-dest-elements">
+          {others.map(c => {
+            const av = getAvailable(c.id, viewMonth);
+            const isSelected = formSelectedId === c.id;
+            const dotColor = getGroupColor(c.groupId);
+
+            return (
+              <button
+                key={c.id}
+                onClick={() => setFormSelectedId(c.id)}
+                className={`w-full flex justify-between items-center p-3 select-none text-left transition ${isSelected ? 'bg-emerald-50/70' : 'hover:bg-slate-50/50'}`}
+                id={`move-row-${c.id}`}
+              >
+                <div className="flex items-center gap-2 min-w-0" id={`move-row-left-${c.id}`}>
+                  <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: dotColor }} />
+                  <span className="text-xs font-semibold text-gray-700 truncate">{c.name}</span>
+                </div>
+                <span className="text-[10px] text-gray-400 font-bold font-mono shrink-0">{fmtIDR(av)} av</span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
       <button
         onClick={() => {
-          const cleanAmount = parseAmount(formAmountStr);
           if (!cleanAmount || !formSelectedId) return;
 
           const srcAssigned = getAssigned(sourceCategory.id, viewMonth);
@@ -271,12 +323,12 @@ export const MoveMoneyForm: React.FC<MoveMoneyFormProps> = ({
           closeSheet();
           showToast(`Moved ${fmtIDR(cleanAmount)} from ${sourceCategory.name}`, null, undefined);
         }}
-        disabled={!formSelectedId || !parseAmount(formAmountStr)}
+        disabled={!formSelectedId || !cleanAmount}
         className="w-full py-2.5 bg-emerald-800 disabled:opacity-30 hover:bg-emerald-900 text-white font-semibold text-xs rounded transition flex items-center justify-center gap-1"
         id="move-submit-btn"
       >
         <ArrowLeftRight size={13} />
-        Move {formAmountStr ? fmtIDR(parseAmount(formAmountStr)) : ''}
+        Move {cleanAmount ? fmtIDR(cleanAmount) : ''}
       </button>
     </div>
   );

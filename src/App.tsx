@@ -143,7 +143,7 @@ function MainAppContent() {
 
   const openSetupTarget = (category: Category) => {
     setActiveView('budget');
-    openSheet('set_target', `Set Target: ${category.name}`, category);
+    openSheet('set_target', `Set Target for ${category.name}`, category);
   };
 
   const openSetupAccount = () => {
@@ -219,6 +219,7 @@ function MainAppContent() {
             {/* Top ready to assign overview */}
             <ReadyToAssign 
               onAddIncomeClick={() => openSheet('add_income', 'Add Income')}
+              onAssignReadyToAssignClick={() => openSheet('assign_rta', 'Assign Leftover')}
               onSetToast={showToast}
               onShowConfirm={showConfirm}
             />
@@ -234,6 +235,9 @@ function MainAppContent() {
                 openSheet('add_category', 'New Category', groupId);
               }}
               onCategoryClick={(cat) => openSheet('category_detail', cat.name, cat)}
+              onMoveMoneyClick={(cat) => openSheet('move_money', `Move Money from ${cat.name}`, cat)}
+              onSetTargetClick={(cat) => openSheet('set_target', `Set Target for ${cat.name}`, cat)}
+              onActivityClick={(cat) => openSheet('category_activity', `Activity for ${cat.name}`, cat)}
               onSetToast={showToast}
             />
           </>

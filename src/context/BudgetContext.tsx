@@ -20,6 +20,7 @@ import {
   getNetWorth as calculateNetWorth,
   getRTA as calculateRTA,
   getSpent as calculateSpent,
+  rebalanceBudgetAssignments,
   totalAssigned as calculateTotalAssigned,
   totalIncome as calculateTotalIncome,
   totalInstallmentObligation as calculateTotalInstallmentObligation
@@ -355,10 +356,8 @@ export const BudgetProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   const autoAssign = (month: string) => {
-    let rta = getRTA(month);
-    if (rta <= 0) return;
-
     setState(prev => {
+      let rta = calculateRTA(prev, month);
       const pendingByCat: Record<string, number> = {};
       const queue: { cat: Category; needed: number; priority: number; dueDate?: string }[] = [];
       const freshBudgets = { ...prev.budgets };
@@ -447,90 +446,22 @@ export const BudgetProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       }
 
       freshBudgets[month] = activeBudget;
-      return { ...prev, budgets: freshBudgets };
+      const autoAssignedState = { ...prev, budgets: freshBudgets };
+      return {
+        ...autoAssignedState,
+        budgets: {
+          ...autoAssignedState.budgets,
+          [month]: rebalanceBudgetAssignments(autoAssignedState, month)
+        }
+      };
     });
   };
 
   const rebalanceAssignments = (month: string) => {
     setState(prev => {
-      const activeBudget = { ...prev.budgets[month] };
-      const getCategoryAssigned = (catId: string) => activeBudget[catId] || 0;
-      
-      const getCategoryAvailable = (catId: string) => {
-        let assigned = 0;
-        let spent = 0;
-        const sortedMonths = Object.keys(prev.budgets).filter(m => m <= month).sort();
-        for (const m of sortedMonths) {
-          assigned += m === month ? (activeBudget[catId] || 0) : (prev.budgets[m]?.[catId] || 0);
-          spent += prev.transactions
-            .filter(t => t.catId === catId && t.date.substring(0, 7) === m)
-            .reduce((s, t) => s + t.amount, 0);
-        }
-        return assigned - spent;
-      };
-
-      const getCategorySurplus = (cat: Category) => {
-        const assigned = getCategoryAssigned(cat.id);
-        const avail = getCategoryAvailable(cat.id);
-        if (assigned <= 0 || avail <= 0) return 0;
-        if (!cat.target) return Math.min(assigned, avail);
-        if (cat.target.type === 'by_date') return Math.min(assigned, Math.max(0, avail - cat.target.amount));
-        return Math.min(assigned, Math.max(0, assigned - cat.target.amount));
-      };
-
-      const surplus = prev.categories
-        .map(cat => ({ cat, amount: getCategorySurplus(cat) }))
-        .filter(x => x.amount > 0);
-
-      const needs: { cat: Category; amount: number; priority: number; dueDate?: string }[] = [];
-      prev.categories.forEach(cat => {
-        const overspent = Math.max(0, -getCategoryAvailable(cat.id));
-        if (overspent > 0) needs.push({ cat, amount: overspent, priority: 0 });
-      });
-      prev.categories.filter(c => c.target && c.target.type === 'by_date').forEach(cat => {
-        if (!cat.target) return;
-        const need = Math.max(0, cat.target.amount - getCategoryAvailable(cat.id));
-        if (need > 0) needs.push({ cat, amount: need, priority: 1, dueDate: cat.target.dueDate || '9999-12' });
-      });
-      prev.categories.filter(c => c.target && c.target.type === 'monthly').forEach(cat => {
-        if (!cat.target) return;
-        const need = Math.max(0, cat.target.amount - getCategoryAssigned(cat.id));
-        if (need > 0) needs.push({ cat, amount: need, priority: 2 });
-      });
-      prev.categories.filter(c => c.target && c.target.type === 'monthly_builder').forEach(cat => {
-        if (!cat.target) return;
-        const need = Math.max(0, cat.target.amount - getCategoryAssigned(cat.id));
-        if (need > 0) needs.push({ cat, amount: need, priority: 3 });
-      });
-
-      needs.sort((a, b) => {
-        if (a.priority !== b.priority) return a.priority - b.priority;
-        if (a.priority === 1) return (a.dueDate || '').localeCompare(b.dueDate || '');
-        return prev.categories.indexOf(a.cat) - prev.categories.indexOf(b.cat);
-      });
-
-      let fromIdx = 0;
-      for (const need of needs) {
-        let remaining = need.amount;
-        while (remaining > 0 && fromIdx < surplus.length) {
-          const src = surplus[fromIdx];
-          if (src.cat.id === need.cat.id || src.amount <= 0) {
-            fromIdx++;
-            continue;
-          }
-          const give = Math.min(src.amount, remaining);
-          activeBudget[src.cat.id] = (activeBudget[src.cat.id] || 0) - give;
-          activeBudget[need.cat.id] = (activeBudget[need.cat.id] || 0) + give;
-          src.amount -= give;
-          remaining -= give;
-          if (src.amount <= 0) fromIdx++;
-        }
-        if (fromIdx >= surplus.length) break;
-      }
-
       return {
         ...prev,
-        budgets: { ...prev.budgets, [month]: activeBudget }
+        budgets: { ...prev.budgets, [month]: rebalanceBudgetAssignments(prev, month) }
       };
     });
   };
