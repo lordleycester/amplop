@@ -82,6 +82,25 @@ test('new budget account balances increase Ready to Assign', () => {
   assert.equal(getRTA(state, month), 3000000);
 });
 
+test('tracking account balances do not increase Ready to Assign', () => {
+  const state = makeState({
+    accounts: [account('brokerage', 'investment', 2500000)]
+  });
+
+  assert.equal(getRTA(state, month), 0);
+});
+
+test('future income is not ready to assign in the current month', () => {
+  const state = makeState({
+    income: [
+      { id: 'current', date: '2026-06-01', amount: 5000000, accountId: 'bank', note: 'Salary' },
+      { id: 'future', date: '2026-07-01', amount: 5000000, accountId: 'bank', note: 'Next salary' }
+    ]
+  });
+
+  assert.equal(getRTA(state, month), 5000000);
+});
+
 test('account balance adjustments count as inflow or outflow', () => {
   const state = makeState({
     accounts: [account('bank', 'checking', 1000000)],
@@ -114,6 +133,25 @@ test('spending from a category decreases that category available amount', () => 
   });
 
   assert.equal(getAvailable(state, 'groceries', month), 650000);
+});
+
+test('category available balance carries forward across months', () => {
+  const state = makeState({
+    budgets: {
+      '2026-05': { groceries: 1000000 },
+      [month]: { groceries: 500000 }
+    },
+    transactions: [{
+      id: 'may_tx',
+      date: '2026-05-20',
+      amount: 250000,
+      catId: 'groceries',
+      accountId: 'bank',
+      note: 'Groceries'
+    }]
+  });
+
+  assert.equal(getAvailable(state, 'groceries', month), 1250000);
 });
 
 test('transfers between accounts do not change total net worth', () => {

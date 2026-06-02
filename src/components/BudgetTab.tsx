@@ -6,6 +6,7 @@
 import React, { useState } from 'react';
 import { useBudget } from '../context/BudgetContext';
 import { fmtIDR, fmtCompact, monthLabel, monthLabelShort } from '../utils/helpers';
+import { getGroupColor } from '../utils/sharedUtils';
 import { ChevronDown, Plus, Target as TargetIcon, Layers, TrendingUp, Sparkles, CheckCircle2, PieChart, Activity, ShoppingBag } from 'lucide-react';
 import { Category, Group } from '../types';
 
@@ -53,25 +54,6 @@ export const BudgetTab: React.FC<BudgetTabProps> = ({
       copyBudgets(prevMonthStr, viewMonth);
       onSetToast(`Copied budgets from ${monthLabelShort(prevMonthStr)}`, null, undefined);
     }
-  };
-
-  // Color logic rules
-  const getGroupColor = (groupId: string): string => {
-    const colors: Record<string, string> = {
-      bills: '#3b82f6',    // Blue
-      food: '#f59e0b',     // Amber
-      fun: '#8b5cf6',      // Purple
-      savings: '#10b981',  // Emerald
-      other: '#9ca3af',    // Slate
-    };
-    if (colors[groupId]) return colors[groupId];
-    // Simple deterministic hash
-    let hash = 0;
-    for (let i = 0; i < groupId.length; i++) {
-      hash = (hash * 31 + groupId.charCodeAt(i)) & 0xffffffff;
-    }
-    const fallbacks = ['#3b82f6', '#f59e0b', '#8b5cf6', '#10b981', '#ef4444', '#06b6d4', '#ec4899', '#84cc16'];
-    return fallbacks[Math.abs(hash) % fallbacks.length];
   };
 
   // Target math progress percent

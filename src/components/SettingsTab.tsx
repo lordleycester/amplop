@@ -6,6 +6,7 @@
 import React, { useState } from 'react';
 import { useBudget } from '../context/BudgetContext';
 import { fmtIDR, fmtCompact, monthLabelShort } from '../utils/helpers';
+import { getGroupColor, installmentEndDate, installmentIsActive, installmentIsCompleted, installmentRemainingMonths } from '../utils/sharedUtils';
 import { 
   Pencil, Trash2, Plus, Play, Pause, CreditCard, Calendar, Cloud, Save, RefreshCw, Trash, Upload, Download, FileSpreadsheet, Lock, ArrowUp, ArrowDown
 } from 'lucide-react';
@@ -123,53 +124,6 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
   const [syncKey, setSyncKey] = useState(() => getSyncConfig().anonKey || '');
   const [syncId, setSyncId] = useState(() => getSyncConfig().syncId || 'default');
   const [syncPass, setSyncPass] = useState(() => getSyncConfig().passphrase || '');
-
-  // Installment end date helper
-  const _instEndDate = (inst: Installment): string => {
-    let [y, mo] = inst.startDate.split('-').map(Number);
-    mo += inst.totalMonths - 1;
-    while (mo > 12) {
-      mo -= 12;
-      y++;
-    }
-    return y + '-' + String(mo).padStart(2, '0');
-  };
-
-  const _instIsActive = (inst: Installment, m: string): boolean => {
-    const end = _instEndDate(inst);
-    return m >= inst.startDate && m <= end;
-  };
-
-  const _instIsCompleted = (inst: Installment, m: string): boolean => {
-    return m > _instEndDate(inst);
-  };
-
-  const _instRemainingMonths = (inst: Installment, m: string): number => {
-    const end = _instEndDate(inst);
-    if (m > end) return 0;
-    if (m < inst.startDate) return inst.totalMonths;
-    const [cy, cm] = m.split('-').map(Number);
-    const [ey, em] = end.split('-').map(Number);
-    return (ey - cy) * 12 + (em - cm) + 1;
-  };
-
-  // Group Collapsing/Coloring
-  const getGroupColor = (groupId: string): string => {
-    const colors: Record<string, string> = {
-      bills: '#3b82f6',
-      food: '#f59e0b',
-      fun: '#8b5cf6',
-      savings: '#10b981',
-      other: '#9ca3af',
-    };
-    if (colors[groupId]) return colors[groupId];
-    let hash = 0;
-    for (let i = 0; i < groupId.length; i++) {
-      hash = (hash * 31 + groupId.charCodeAt(i)) & 0xffffffff;
-    }
-    const fallbacks = ['#3b82f6', '#f59e0b', '#8b5cf6', '#10b981', '#ef4444', '#06b6d4', '#ec4899', '#84cc16'];
-    return fallbacks[Math.abs(hash) % fallbacks.length];
-  };
 
   // Import file triggers
   const handleImportClick = () => {
@@ -395,9 +349,9 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
   };
 
   // Grouped installments
-  const activeInst = state.installments.filter(i => _instIsActive(i, viewMonth));
+  const activeInst = state.installments.filter(i => installmentIsActive(i, viewMonth));
   const upcomingInst = state.installments.filter(i => i.startDate > viewMonth);
-  const completedInst = state.installments.filter(i => _instIsCompleted(i, viewMonth));
+  const completedInst = state.installments.filter(i => installmentIsCompleted(i, viewMonth));
 
   return (
     <div className="flex-1 overflow-y-auto bg-gray-50/50 pb-12 select-none" id="settings-tab-view">
@@ -580,7 +534,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
         ) : (
           <>
             {activeInst.map(inst => {
-              const remaining = _instRemainingMonths(inst, viewMonth);
+              const remaining = installmentRemainingMonths(inst, viewMonth);
               return (
                 <div key={inst.id} className="flex items-center justify-between p-3 hover:bg-slate-50" id={`settings-inst-row-${inst.id}`}>
                   <div className="min-w-0" id={`settings-inst-info-${inst.id}`}>
@@ -650,7 +604,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
                     {inst.name}
                   </div>
                   <div className="text-[9px] text-emerald-800 font-bold uppercase mt-0.5 tracking-wider font-mono">
-                    Paid Off {monthLabelShort(_instEndDate(inst))} (Paid Off)
+                    Paid Off {monthLabelShort(installmentEndDate(inst))} (Paid Off)
                   </div>
                 </div>
 

@@ -24,6 +24,7 @@ import {
   totalIncome as calculateTotalIncome,
   totalInstallmentObligation as calculateTotalInstallmentObligation
 } from '../utils/budgetMath';
+import { installmentPaidMonths } from '../utils/sharedUtils';
 
 interface BudgetContextType {
   state: AppState;
@@ -181,43 +182,6 @@ export const BudgetProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   }, [state]);
-
-  // Installment helpers
-  const _instEndDate = (inst: Installment): string => {
-    let [y, mo] = inst.startDate.split('-').map(Number);
-    mo += inst.totalMonths - 1;
-    while (mo > 12) {
-      mo -= 12;
-      y++;
-    }
-    return y + '-' + String(mo).padStart(2, '0');
-  };
-
-  const _instIsActive = (inst: Installment, m: string): boolean => {
-    const end = _instEndDate(inst);
-    return m >= inst.startDate && m <= end;
-  };
-
-  const _instIsCompleted = (inst: Installment, m: string): boolean => {
-    return m > _instEndDate(inst);
-  };
-
-  const _instRemainingMonths = (inst: Installment, m: string): number => {
-    const end = _instEndDate(inst);
-    if (m > end) return 0;
-    if (m < inst.startDate) return inst.totalMonths;
-    const [cy, cm] = m.split('-').map(Number);
-    const [ey, em] = end.split('-').map(Number);
-    return (ey - cy) * 12 + (em - cm) + 1;
-  };
-
-  const _instPaidMonths = (inst: Installment, m: string): number => {
-    if (m < inst.startDate) return 0;
-    const [sy, smo] = inst.startDate.split('-').map(Number);
-    const [cy, cm]  = m.split('-').map(Number);
-    const total = (cy - sy) * 12 + (cm - smo);
-    return Math.min(total, inst.totalMonths);
-  };
 
   const activeInstallments = (month: string) => {
     return calculateActiveInstallments(state, month);
@@ -962,7 +926,7 @@ export const BudgetProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setState(prev => {
       const inst = prev.installments.find(i => i.id === instId);
       if (!inst) return prev;
-      const paid = _instPaidMonths(inst, viewMonth);
+      const paid = installmentPaidMonths(inst, viewMonth);
       if (paid <= 0) return prev;
       
       // Stop upcoming transactions
