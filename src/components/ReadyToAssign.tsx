@@ -37,7 +37,7 @@ export const ReadyToAssign: React.FC<ReadyToAssignProps> = ({
     rtaTextClass += "text-red-600 animate-pulse";
     labelText = "Over-assigned by";
   } else if (totalInc === 0) {
-    labelText = "Add income to start budgeting";
+    labelText = "Add accounts to start budgeting";
     rtaTextClass += "text-emerald-700";
   } else {
     rtaTextClass += "text-emerald-800";
@@ -67,7 +67,7 @@ export const ReadyToAssign: React.FC<ReadyToAssignProps> = ({
       return;
     }
     autoAssign(viewMonth);
-    onSetToast('Auto-assigned remaining funds to categories', null, undefined);
+    onSetToast('Auto-assigned what your targets need. Any extra stayed Ready to Assign.', null, undefined);
   };
 
   return (

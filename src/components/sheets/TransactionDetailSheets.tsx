@@ -197,13 +197,15 @@ export const EditExpenseForm: React.FC<EditExpenseFormProps> = ({
 
 interface IncomeDetailSheetProps extends SheetCallbacks, ConfirmCallback {
   income: Income;
+  onEditIncome: (income: Income) => void;
 }
 
 export const IncomeDetailSheet: React.FC<IncomeDetailSheetProps> = ({
   income,
   closeSheet,
   showToast,
-  showConfirm
+  showConfirm,
+  onEditIncome
 }) => {
   const { state, deleteIncome } = useBudget();
   const acc = state.accounts.find(a => a.id === income.accountId);
@@ -227,7 +229,13 @@ export const IncomeDetailSheet: React.FC<IncomeDetailSheetProps> = ({
         <div className="text-[10px] text-gray-400 font-bold font-mono tracking-wider pt-1">{fmtDate(income.date)}</div>
       </div>
 
-      <div className="pt-4" id="inc-details-sheet-actions">
+      <div className="grid grid-cols-2 gap-3 pt-4" id="inc-details-sheet-actions">
+        <button
+          onClick={() => onEditIncome(income)}
+          className="py-2 px-3 border border-slate-200 text-gray-700 hover:bg-slate-100 rounded-md text-xs font-semibold flex items-center justify-center gap-1 transition"
+        >
+          Edit Detail
+        </button>
         <button
           onClick={() => {
             showConfirm('Delete Income?', 'Are you sure you want to permanently erase this income inflow record? Budgets RTA balances will decrease.', () => {
@@ -236,11 +244,107 @@ export const IncomeDetailSheet: React.FC<IncomeDetailSheetProps> = ({
               showToast('Income transaction deleted', null, undefined);
             });
           }}
-          className="w-full py-2.5 px-3 border border-red-500/15 text-red-650 hover:bg-red-50 rounded-md text-xs font-semibold flex items-center justify-center gap-1 transition"
+          className="py-2 px-3 border border-red-500/15 text-red-650 hover:bg-red-50 rounded-md text-xs font-semibold flex items-center justify-center gap-1 transition"
         >
-          Delete Income Inflow
+          Delete Income
         </button>
       </div>
+    </div>
+  );
+};
+
+interface EditIncomeFormProps
+  extends AmountFormState,
+    SelectFormState,
+    DateFormState,
+    NoteFormState,
+    SheetCallbacks {
+  income: Income;
+}
+
+export const EditIncomeForm: React.FC<EditIncomeFormProps> = ({
+  income,
+  formAmountStr,
+  setFormAmountStr,
+  formSelectedId,
+  setFormSelectedId,
+  formDate,
+  setFormDate,
+  formNote,
+  setFormNote,
+  closeSheet,
+  showToast
+}) => {
+  const { state, editIncome } = useBudget();
+  const budgetAccounts = state.accounts.filter(a => a.onBudget);
+
+  return (
+    <div className="space-y-4" id="form-edit-income">
+      <div>
+        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1 tracking-wider">Amount (Rp)</label>
+        <input
+          type="text"
+          inputMode="decimal"
+          value={formAmountStr}
+          onChange={(e) => setFormAmountStr(e.target.value)}
+          className="w-full text-center px-4 py-3 bg-slate-50 border border-gray-200 rounded font-mono text-xl font-bold select-all outline-none focus:bg-white focus:border-emerald-600 transition"
+        />
+      </div>
+
+      {budgetAccounts.length > 0 && (
+        <div>
+          <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1.5 tracking-wider">To Account</label>
+          <select
+            value={formSelectedId}
+            onChange={(e) => setFormSelectedId(e.target.value)}
+            className="w-full px-2.5 py-2 border border-gray-200 bg-white rounded text-xs select-none"
+          >
+            {budgetAccounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+          </select>
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1 tracking-wider">Note</label>
+          <input
+            type="text"
+            value={formNote}
+            onChange={(e) => setFormNote(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-200 rounded text-xs outline-none focus:border-emerald-600 transition"
+          />
+        </div>
+        <div>
+          <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1 tracking-wider">Date</label>
+          <input
+            type="date"
+            value={formDate}
+            onChange={(e) => setFormDate(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-200 bg-white rounded text-xs outline-none focus:border-emerald-600 transition"
+          />
+        </div>
+      </div>
+
+      <button
+        onClick={() => {
+          const incomeValue = parseAmount(formAmountStr);
+          if (!incomeValue) return;
+
+          editIncome(
+            income.id,
+            incomeValue,
+            formDate,
+            formSelectedId || budgetAccounts[0]?.id || null,
+            formNote.trim()
+          );
+          closeSheet();
+          showToast('Income details updated', null, undefined);
+        }}
+        disabled={!parseAmount(formAmountStr)}
+        className="w-full py-2.5 bg-emerald-800 disabled:opacity-30 hover:bg-emerald-900 text-white font-semibold text-xs rounded transition"
+      >
+        Save Income
+      </button>
     </div>
   );
 };

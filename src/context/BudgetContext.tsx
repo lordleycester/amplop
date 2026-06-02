@@ -24,11 +24,12 @@ import {
   totalIncome as calculateTotalIncome,
   totalInstallmentObligation as calculateTotalInstallmentObligation
 } from '../utils/budgetMath';
-import { installmentPaidMonths } from '../utils/sharedUtils';
+import { FALLBACK_GROUP_COLORS, getGroupColor, installmentPaidMonths } from '../utils/sharedUtils';
 import { clearPersistedState, loadPersistedState, savePersistedState } from '../storage/budgetStorage';
 
 interface BudgetContextType {
   state: AppState;
+  hasExistingData: boolean;
   viewMonth: string;
   setViewMonth: (month: string) => void;
   activeView: 'budget' | 'history' | 'accounts' | 'settings' | 'cicilan';
@@ -81,6 +82,7 @@ interface BudgetContextType {
   deleteExpense: (txId: string) => void;
   
   addIncome: (amount: number, date: string, accountId: string | null, note: string) => void;
+  editIncome: (incId: string, amount: number, date: string, accountId: string | null, note: string) => void;
   deleteIncome: (incId: string) => void;
   
   addTransfer: (fromId: string, toId: string, amount: number, date: string, note: string, kind?: string) => void;
@@ -99,6 +101,7 @@ interface BudgetContextType {
   approveAllPendingRecurring: (month: string) => void;
   
   setCategoryTarget: (catId: string, target: Category['target']) => void;
+  applyStarterCategories: (items: { name: string; groupId: string }[]) => void;
   
   // Global Persistence & Backup
   clearAllData: () => void;
@@ -110,11 +113,11 @@ interface BudgetContextType {
 const SYNC_CONFIG_KEY = 'amplop_sync_config_v1';
 
 const DEFAULT_GROUPS: Group[] = [
-  { id: 'bills',   name: 'Bills',         collapsed: false, sort: 0 },
-  { id: 'food',    name: 'Food & Drink',  collapsed: false, sort: 1 },
-  { id: 'fun',     name: 'Fun Money',     collapsed: false, sort: 2 },
-  { id: 'savings', name: 'Savings Goals', collapsed: false, sort: 3 },
-  { id: 'other',   name: 'Other',         collapsed: false, sort: 4 },
+  { id: 'needs',         name: 'Needs',         collapsed: false, sort: 0 },
+  { id: 'wants',         name: 'Wants',         collapsed: false, sort: 1 },
+  { id: 'subscriptions', name: 'Subscriptions', collapsed: false, sort: 2 },
+  { id: 'debt',          name: 'Debt',          collapsed: false, sort: 3 },
+  { id: 'savings',       name: 'Savings Goals', collapsed: false, sort: 4 },
 ];
 
 const DEFAULT_ACCOUNTS: Account[] = [
@@ -122,19 +125,7 @@ const DEFAULT_ACCOUNTS: Account[] = [
   { id: 'cash',         name: 'Cash',         type: 'cash',     onBudget: true,  startingBalance: 0, sort: 1 },
 ];
 
-const DEFAULT_CATEGORIES: Category[] = [
-  { id: 'rent',      name: 'Rent',           emoji: '', groupId: 'bills',   sort: 0, target: null },
-  { id: 'electric',  name: 'Electricity',    emoji: '', groupId: 'bills',   sort: 1, target: null },
-  { id: 'internet',  name: 'Internet',       emoji: '', groupId: 'bills',   sort: 2, target: null },
-  { id: 'coffee',    name: 'Coffee',         emoji: '', groupId: 'food',    sort: 0, target: { type: 'monthly', amount: 800000 } },
-  { id: 'dining',    name: 'Dining Out',     emoji: '', groupId: 'food',    sort: 1, target: { type: 'monthly', amount: 2000000 } },
-  { id: 'groceries', name: 'Groceries',      emoji: '', groupId: 'food',    sort: 2, target: { type: 'monthly', amount: 3000000 } },
-  { id: 'gaming',    name: 'Gaming',         emoji: '', groupId: 'fun',     sort: 0, target: null },
-  { id: 'shopping',  name: 'Shopping',       emoji: '', groupId: 'fun',     sort: 1, target: null },
-  { id: 'emergency', name: 'Emergency Fund', emoji: '', groupId: 'savings', sort: 0, target: { type: 'monthly_builder', amount: 500000 } },
-  { id: 'transport', name: 'Transport',      emoji: '', groupId: 'other',   sort: 0, target: null },
-  { id: 'misc',      name: 'Other',          emoji: '', groupId: 'other',   sort: 1, target: null },
-];
+const DEFAULT_CATEGORIES: Category[] = [];
 
 const createDefaultState = (): AppState => ({
   groups: DEFAULT_GROUPS,
@@ -159,6 +150,50 @@ const normalizeState = (rawState: Partial<AppState> | null | undefined): AppStat
   installments: rawState?.installments || [],
   recurring: rawState?.recurring || []
 });
+
+const hasBudgetAssignments = (budgets: BudgetMap): boolean => {
+  return Object.values(budgets).some(categoryMap => {
+    return Object.values(categoryMap).some(amount => Boolean(amount));
+  });
+};
+
+const matchesDefaultSetup = (state: AppState): boolean => {
+  return (
+    JSON.stringify(state.groups) === JSON.stringify(DEFAULT_GROUPS) &&
+    JSON.stringify(state.categories) === JSON.stringify(DEFAULT_CATEGORIES) &&
+    JSON.stringify(state.accounts) === JSON.stringify(DEFAULT_ACCOUNTS)
+  );
+};
+
+const hasMeaningfulUserData = (state: AppState): boolean => {
+  return (
+    state.transactions.length > 0 ||
+    state.income.length > 0 ||
+    hasBudgetAssignments(state.budgets) ||
+    state.transfers.length > 0 ||
+    state.installments.length > 0 ||
+    state.recurring.length > 0 ||
+    !matchesDefaultSetup(state)
+  );
+};
+
+const slugifyCategoryName = (name: string): string => {
+  const cleaned = name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+  return cleaned || 'category';
+};
+
+const createGroupIdWithUniqueColor = (name: string, existingGroups: Group[]): string => {
+  const base = slugifyCategoryName(name);
+  const seed = Date.now().toString(36);
+  const usedColors = new Set(existingGroups.map(group => getGroupColor(group.id)));
+
+  for (let attempt = 0; attempt < FALLBACK_GROUP_COLORS.length * 3; attempt++) {
+    const candidate = attempt === 0 ? `${base}_${seed}` : `${base}_${seed}_${attempt}`;
+    if (!usedColors.has(getGroupColor(candidate))) return candidate;
+  }
+
+  return `${base}_${seed}`;
+};
 
 const BudgetContext = createContext<BudgetContextType | undefined>(undefined);
 
@@ -411,36 +446,6 @@ export const BudgetProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         rta -= give;
       }
 
-      // Sweep leftover to leftover_savings if RTA still > 0
-      if (rta > 0) {
-        let leftSavingsCat = prev.categories.find(c => c.id === 'leftover_savings');
-        let newCategories = [...prev.categories];
-        let newGroups = [...prev.groups];
-
-        if (!leftSavingsCat) {
-          let savingsGroup = prev.groups.find(g => g.id === 'savings');
-          if (!savingsGroup) {
-            savingsGroup = { id: 'savings', name: 'Savings Goals', collapsed: false, sort: prev.groups.length };
-            newGroups.push(savingsGroup);
-          }
-          const groupCats = prev.categories.filter(c => c.groupId === savingsGroup!.id);
-          leftSavingsCat = {
-            id: 'leftover_savings',
-            name: 'Leftover Savings',
-            emoji: '',
-            groupId: savingsGroup.id,
-            sort: groupCats.length,
-            target: null
-          };
-          newCategories.push(leftSavingsCat);
-        }
-
-        const currentAssigned = activeBudget[leftSavingsCat.id] || 0;
-        activeBudget[leftSavingsCat.id] = currentAssigned + rta;
-        freshBudgets[month] = activeBudget;
-        return { ...prev, budgets: freshBudgets, categories: newCategories, groups: newGroups };
-      }
-
       freshBudgets[month] = activeBudget;
       return { ...prev, budgets: freshBudgets };
     });
@@ -603,7 +608,7 @@ export const BudgetProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const addGroup = (name: string) => {
     setState(prev => {
       const newGroup: Group = {
-        id: name.toLowerCase().replace(/[^a-z0-9]/g, '_') + '_' + Date.now().toString(36),
+        id: createGroupIdWithUniqueColor(name, prev.groups),
         name,
         collapsed: false,
         sort: prev.groups.length
@@ -812,6 +817,19 @@ export const BudgetProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         income: [...prev.income, newInc]
       };
     });
+  };
+
+  const editIncome = (incId: string, amount: number, date: string, accountId: string | null, note: string) => {
+    setState(prev => ({
+      ...prev,
+      income: prev.income.map(i => i.id === incId ? {
+        ...i,
+        date,
+        amount,
+        accountId: accountId || null,
+        note
+      } : i)
+    }));
   };
 
   const deleteIncome = (incId: string) => {
@@ -1079,6 +1097,68 @@ export const BudgetProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }));
   };
 
+  const applyStarterCategories = (items: { name: string; groupId: string }[]) => {
+    setState(prev => {
+      const hasExistingSetup = hasMeaningfulUserData(prev);
+      const sortByGroup: Record<string, number> = {};
+      const usedIds = new Set<string>();
+      const existingGroups = hasExistingSetup ? prev.groups : [];
+      const existingCategories = hasExistingSetup ? prev.categories : [];
+      const groups = hasExistingSetup
+        ? [
+            ...existingGroups,
+            ...DEFAULT_GROUPS
+              .filter(defaultGroup => !existingGroups.some(group => group.id === defaultGroup.id))
+              .map(defaultGroup => ({ ...defaultGroup, sort: existingGroups.length + defaultGroup.sort }))
+          ]
+        : DEFAULT_GROUPS;
+      const categories: Category[] = [...existingCategories];
+
+      categories.forEach(category => {
+        usedIds.add(category.id);
+        sortByGroup[category.groupId] = Math.max(sortByGroup[category.groupId] || 0, category.sort + 1);
+      });
+
+      items.forEach(item => {
+        const groupExists = groups.some(group => group.id === item.groupId);
+        const trimmedName = item.name.trim();
+        const categoryExists = categories.some(category => (
+          category.groupId === item.groupId &&
+          category.name.trim().toLowerCase() === trimmedName.toLowerCase()
+        ));
+        if (!trimmedName || !groupExists || categoryExists) return;
+ 
+        const baseId = slugifyCategoryName(trimmedName);
+        let id = baseId;
+        let counter = 2;
+        while (usedIds.has(id)) {
+          id = `${baseId}_${counter}`;
+          counter += 1;
+        }
+        usedIds.add(id);
+
+        const sort = sortByGroup[item.groupId] || 0;
+        sortByGroup[item.groupId] = sort + 1;
+
+        categories.push({
+          id,
+          name: trimmedName,
+          emoji: '',
+          groupId: item.groupId,
+          sort,
+          target: null
+        });
+      });
+
+      return {
+        ...prev,
+        groups,
+        categories,
+        budgets: hasExistingSetup ? prev.budgets : {}
+      };
+    });
+  };
+
   // Global Persistence & Backup
   const clearAllData = () => {
     clearPersistedState();
@@ -1110,6 +1190,8 @@ export const BudgetProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     return { url: '', anonKey: '', syncId: 'default', passphrase: '' };
   };
 
+  const hasExistingData = hasMeaningfulUserData(state);
+
   if (!storageReady) {
     return (
       <div className="h-full flex items-center justify-center bg-slate-50 text-xs font-semibold text-gray-400">
@@ -1121,6 +1203,7 @@ export const BudgetProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   return (
     <BudgetContext.Provider value={{
       state,
+      hasExistingData,
       viewMonth,
       setViewMonth,
       activeView,
@@ -1171,6 +1254,7 @@ export const BudgetProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       deleteExpense,
       
       addIncome,
+      editIncome,
       deleteIncome,
       
       addTransfer,
@@ -1189,6 +1273,7 @@ export const BudgetProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       approveAllPendingRecurring,
       
       setCategoryTarget,
+      applyStarterCategories,
       clearAllData,
       importBackup,
       saveSyncConfig,

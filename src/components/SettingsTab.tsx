@@ -8,11 +8,12 @@ import { useBudget } from '../context/BudgetContext';
 import { fmtIDR, fmtCompact, monthLabelShort } from '../utils/helpers';
 import { getGroupColor, installmentEndDate, installmentIsActive, installmentIsCompleted, installmentRemainingMonths } from '../utils/sharedUtils';
 import { 
-  Pencil, Trash2, Plus, Play, Pause, CreditCard, Calendar, Cloud, Save, RefreshCw, Trash, Upload, Download, FileSpreadsheet, Lock, ArrowUp, ArrowDown
+  Pencil, Trash2, Plus, Play, Pause, CreditCard, Calendar, Cloud, Save, RefreshCw, Trash, Upload, Download, FileSpreadsheet, Lock, ArrowUp, ArrowDown, BookOpen
 } from 'lucide-react';
 import { Category, Group, Account, Installment, Recurring, SyncConfig } from '../types';
 
 interface SettingsTabProps {
+  onOpenGuide: () => void;
   // Groups
   onAddGroupClick: () => void;
   onEditGroupClick: (group: Group) => void;
@@ -97,6 +98,7 @@ async function decryptData(payload: any, passphrase: string): Promise<string> {
 }
 
 export const SettingsTab: React.FC<SettingsTabProps> = ({
+  onOpenGuide,
   onAddGroupClick,
   onEditGroupClick,
   onDeleteGroupClick,
@@ -355,9 +357,24 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
 
   return (
     <div className="flex-1 overflow-y-auto bg-gray-50/50 pb-12 select-none" id="settings-tab-view">
+      {/* Guide section */}
+      <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider py-2 px-4 bg-gray-100 select-none shrink-0" id="settings-sec-head-guide">
+        Getting Started
+      </div>
+
+      <div className="bg-white divide-y divide-gray-150 overflow-hidden" id="settings-guide-panel">
+        <button
+          onClick={onOpenGuide}
+          className="w-full py-3 px-5 hover:bg-gray-50 text-left text-xs font-semibold text-gray-700 flex items-center gap-2 transition"
+          id="settings-open-guide-btn"
+        >
+          <BookOpen size={14} className="text-gray-400" />
+          Budgeting Guide
+        </button>
+      </div>
       
       {/* Category Groups Section */}
-      <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider py-2 px-4 bg-gray-100 select-none shrink-0" id="settings-sec-head-groups">
+      <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider py-2 px-4 bg-gray-100 select-none shrink-0 mt-5" id="settings-sec-head-groups">
         Category Groups
       </div>
 
