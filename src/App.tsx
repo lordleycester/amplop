@@ -260,12 +260,7 @@ function MainAppContent() {
     activeView,
     setActiveView,
     setFilterCatId,
-    applyStarterCategories,
-    deleteCategory,
-    deleteGroup,
-    deleteAccount,
-    deleteInstallment,
-    deleteRecurring
+    applyStarterCategories
   } = useBudget();
 
   // Toast State
@@ -385,13 +380,15 @@ function MainAppContent() {
       )}
       <MonthEndNudge onAssignNow={promptAssignMoney} />
       <RecurringBanner 
-        onAddRecurringClick={() => openSheet('add_recurring', 'New Recurring Schedule')}
+        onAddExpenseClick={() => openSheet('quick_add', 'Add Expense')}
         onSetToast={showToast}
+        onShowConfirm={showConfirm}
       />
       <BudgetTab 
         onAddCategoryClick={(groupId) => {
           openSheet('add_category', 'New Category', groupId);
         }}
+        onEditGroupClick={(group) => openSheet('edit_group', 'Rename Group', group)}
         onCategoryClick={(cat) => openSheet('category_detail', cat.name, cat)}
         onMoveMoneyClick={(cat) => openSheet('move_money', `Move Money from ${cat.name}`, cat)}
         onSetTargetClick={(cat) => openSheet('set_target', `Set Target for ${cat.name}`, cat)}
@@ -428,9 +425,11 @@ function MainAppContent() {
     if (activeView === 'history') {
       return (
         <HistoryTab 
-          onTransactionClick={(tx) => openSheet('transaction_detail', 'Transaction Details', tx)}
-          onIncomeClick={(inc) => openSheet('income_detail', 'Income Details', inc)}
-          onTransferClick={(tf) => openSheet('transfer_detail', 'Transfer Details', tf)}
+          onEditTransaction={(tx) => openSheet('edit_expense', 'Edit Outflow Expense', tx)}
+          onEditIncome={(inc) => openSheet('edit_income', 'Edit Income', inc)}
+          onEditTransfer={(tf) => openSheet('edit_transfer', 'Edit Transfer', tf)}
+          onSetToast={showToast}
+          onShowConfirm={showConfirm}
         />
       );
     }
@@ -458,34 +457,6 @@ function MainAppContent() {
     return (
       <SettingsTab 
         onOpenGuide={openOnboarding}
-        onAddGroupClick={() => openSheet('add_group', 'New Group')}
-        onEditGroupClick={(g) => openSheet('edit_group', 'Rename Group', g)}
-        onDeleteGroupClick={(g) => showConfirm(`Delete Group "${g.name}"?`, `This moves orphaned categories into remaining groups.`, () => deleteGroup(g.id))}
-        onAddCategoryClick={(groupId) => {
-          openSheet('add_category', 'New Category', groupId);
-        }}
-        onEditCategoryClick={(c) => openSheet('edit_category', 'Edit Category', c)}
-        onDeleteCategoryClick={(c) => showConfirm(`Delete Category "${c.name}"?`, `All spending transactions are kept but unassigned.`, () => deleteCategory(c.id))}
-        
-        onAddAccountClick={() => openSheet('add_account', 'Add Account')}
-        onEditAccountClick={(a) => openSheet('edit_account', 'Edit Account', a)}
-        onDeleteAccountClick={(a) => showConfirm(`Delete Account "${a.name}"?`, `Transactions will stay but become unlinked and transfers deleted.`, () => deleteAccount(a.id))}
-        
-        onAddInstallmentClick={() => openSheet('add_installment', 'Add Installment')}
-        onEditInstallmentClick={(i) => openSheet('edit_installment', 'Edit Installment', i)}
-        onDeleteInstallmentClick={(i) => {
-          const hasPast = state.transactions.some(t => t.installmentId === i.id && t.date.substring(0, 7) <= todayMonth());
-          if (hasPast) {
-            showConfirm(`Delete "${i.name}"`, 'Keep historically completed billing transactions or delete all of them?', () => deleteInstallment(i.id, false));
-          } else {
-            showConfirm(`Delete "${i.name}"`, 'Remove this installment template and all of its transactions?', () => deleteInstallment(i.id, false));
-          }
-        }}
-        
-        onAddRecurringClick={() => openSheet('add_recurring', 'New Recurring Template')}
-        onEditRecurringClick={(r) => openSheet('edit_recurring', 'Edit Recurring Template', r)}
-        onDeleteRecurringClick={(r) => showConfirm(`Delete "${r.name}"?`, 'Template will be deleted, historic entered billing statements will remain intact.', () => deleteRecurring(r.id))}
-        
         onSetToast={showToast}
         onShowConfirm={showConfirm}
       />

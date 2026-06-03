@@ -120,7 +120,7 @@ export type SheetType =
   | 'quick_add' | 'add_income' | 'assign_rta' | 'add_account' | 'edit_account' | 'account_detail'
   | 'add_installment' | 'edit_installment' | 'installment_detail'
   | 'add_recurring' | 'edit_recurring'
-  | 'add_transfer' | 'pay_credit_card'
+  | 'add_transfer' | 'edit_transfer' | 'pay_credit_card'
   | 'transaction_detail' | 'transfer_detail' | 'income_detail' | 'edit_expense' | 'edit_income';
 
 type BaseSheetState = {
@@ -138,4 +138,4 @@ export type SheetState =
   | (BaseSheetState & { type: 'edit_recurring'; data: Recurring })
   | (BaseSheetState & { type: 'transaction_detail' | 'edit_expense'; data: Transaction })
   | (BaseSheetState & { type: 'income_detail' | 'edit_income'; data: Income })
-  | (BaseSheetState & { type: 'transfer_detail'; data: Transfer });
+  | (BaseSheetState & { type: 'transfer_detail' | 'edit_transfer'; data: Transfer });

@@ -6,9 +6,9 @@
 import React from 'react';
 import { useBudget } from '../../context/BudgetContext';
 import { fmtIDR, parseAmount } from '../../utils/helpers';
-import type { AmountFormState, DateFormState, NoteFormState, SelectFormState, SheetCallbacks } from './SheetFormProps';
+import type { AmountFormState, DateFormState, NoteFormState, RepeatMonthlyState, SelectFormState, SheetCallbacks } from './SheetFormProps';
 
-interface AddIncomeFormProps extends AmountFormState, SelectFormState, DateFormState, NoteFormState, SheetCallbacks {}
+interface AddIncomeFormProps extends AmountFormState, SelectFormState, DateFormState, NoteFormState, RepeatMonthlyState, SheetCallbacks {}
 
 export const AddIncomeForm: React.FC<AddIncomeFormProps> = ({
   formAmountStr,
@@ -19,11 +19,14 @@ export const AddIncomeForm: React.FC<AddIncomeFormProps> = ({
   setFormDate,
   formNote,
   setFormNote,
+  formRepeatMonthly,
+  setFormRepeatMonthly,
   closeSheet,
   showToast
 }) => {
-  const { state, addIncome } = useBudget();
+  const { state, addIncome, addRecurring } = useBudget();
   const budgetAccounts = state.accounts.filter(a => a.onBudget);
+  const recurringDay = Math.min(28, Math.max(1, Number(formDate.split('-')[2]) || 1));
 
   return (
     <div className="space-y-4" id="form-add-income">
@@ -81,16 +84,54 @@ export const AddIncomeForm: React.FC<AddIncomeFormProps> = ({
         </div>
       </div>
 
+      <label
+        className="flex items-center justify-between gap-3 border border-gray-150 bg-white rounded p-3 cursor-pointer select-none"
+        id="inc-repeat-monthly"
+      >
+        <div className="min-w-0">
+          <div className="text-xs font-bold text-gray-800">Repeat monthly</div>
+          <div className="text-[10px] text-gray-400 font-semibold mt-0.5">
+            Uses day {recurringDay} each month, starting from this income date.
+          </div>
+        </div>
+        <input
+          type="checkbox"
+          checked={formRepeatMonthly}
+          onChange={(e) => setFormRepeatMonthly(e.target.checked)}
+          className="w-4 h-4 shrink-0 accent-emerald-800"
+          id="inc-repeat-checkbox"
+        />
+      </label>
+
       <button
         onClick={() => {
           const incomeValue = parseAmount(formAmountStr);
           if (!incomeValue) return;
 
           const resolvedAccId = formSelectedId || budgetAccounts[0]?.id || null;
+          const note = formNote.trim() || 'Salary Inflow';
+          const recurringId = formRepeatMonthly
+            ? addRecurring(
+                note,
+                incomeValue,
+                'income',
+                null,
+                resolvedAccId,
+                recurringDay,
+                formDate,
+                null
+              )
+            : undefined;
 
-          addIncome(incomeValue, formDate, resolvedAccId, formNote.trim() || 'Salary Inflow');
+          addIncome(incomeValue, formDate, resolvedAccId, note, recurringId);
           closeSheet();
-          showToast(`Added inflow +${fmtIDR(incomeValue)} explicitly to RTA!`, null, undefined);
+          showToast(
+            formRepeatMonthly
+              ? `Income added. It will repeat monthly.`
+              : `Added inflow +${fmtIDR(incomeValue)} explicitly to RTA!`,
+            null,
+            undefined
+          );
         }}
         disabled={!parseAmount(formAmountStr)}
         className="w-full py-2.5 bg-emerald-800 disabled:opacity-30 hover:bg-emerald-900 text-white font-semibold text-xs rounded transition uppercase tracking-wide"

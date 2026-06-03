@@ -78,15 +78,16 @@ interface BudgetContextType {
   deleteAccount: (accountId: string) => void;
   updateTrackingBalance: (accountId: string, newBalance: number) => void;
   
-  addExpense: (amount: number, date: string, catId: string, accountId: string | null, note: string) => void;
+  addExpense: (amount: number, date: string, catId: string, accountId: string | null, note: string, recurringId?: string) => void;
   editExpense: (txId: string, amount: number, date: string, catId: string, accountId: string | null, note: string) => void;
   deleteExpense: (txId: string) => void;
   
-  addIncome: (amount: number, date: string, accountId: string | null, note: string) => void;
+  addIncome: (amount: number, date: string, accountId: string | null, note: string, recurringId?: string) => void;
   editIncome: (incId: string, amount: number, date: string, accountId: string | null, note: string) => void;
   deleteIncome: (incId: string) => void;
   
   addTransfer: (fromId: string, toId: string, amount: number, date: string, note: string, kind?: string) => void;
+  editTransfer: (tfId: string, fromId: string, toId: string, amount: number, date: string, note: string) => void;
   deleteTransfer: (tfId: string) => void;
   
   addInstallment: (name: string, emoji: string, accId: string | null, catId: string | null, total: number, months: number, monthly: number, start: string, note: string) => void;
@@ -94,7 +95,7 @@ interface BudgetContextType {
   deleteInstallment: (instId: string, futureOnly: boolean) => void;
   markInstallmentPaidOff: (instId: string) => void;
   
-  addRecurring: (name: string, amount: number, type: 'expense' | 'income', catId: string | null, accountId: string | null, day: number, start: string, end: string | null) => void;
+  addRecurring: (name: string, amount: number, type: 'expense' | 'income', catId: string | null, accountId: string | null, day: number, start: string, end: string | null) => string;
   editRecurring: (recId: string, name: string, amount: number, type: 'expense' | 'income', catId: string | null, accountId: string | null, day: number, start: string, end: string | null) => void;
   toggleRecurringActive: (recId: string) => void;
   deleteRecurring: (recId: string) => void;
@@ -701,7 +702,7 @@ export const BudgetProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   // Expenses, Incomes & Transfers
-  const addExpense = (amount: number, date: string, catId: string, accountId: string | null, note: string) => {
+  const addExpense = (amount: number, date: string, catId: string, accountId: string | null, note: string, recurringId?: string) => {
     setState(prev => {
       const newTx: Transaction = {
         id: 'tx_' + genId(),
@@ -709,7 +710,8 @@ export const BudgetProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         amount,
         catId: catId || null,
         accountId: accountId || null,
-        note
+        note,
+        recurringId
       };
       return {
         ...prev,
@@ -734,14 +736,15 @@ export const BudgetProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }));
   };
 
-  const addIncome = (amount: number, date: string, accountId: string | null, note: string) => {
+  const addIncome = (amount: number, date: string, accountId: string | null, note: string, recurringId?: string) => {
     setState(prev => {
       const newInc: Income = {
         id: 'inc_' + genId(),
         date,
         amount,
         accountId: accountId || null,
-        note
+        note,
+        recurringId
       };
       return {
         ...prev,
@@ -786,6 +789,20 @@ export const BudgetProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         transfers: [...prev.transfers, newTf]
       };
     });
+  };
+
+  const editTransfer = (tfId: string, fromAccountId: string, toAccountId: string, amount: number, date: string, note: string) => {
+    setState(prev => ({
+      ...prev,
+      transfers: prev.transfers.map(tf => tf.id === tfId ? {
+        ...tf,
+        date,
+        fromAccountId,
+        toAccountId,
+        amount,
+        note
+      } : tf)
+    }));
   };
 
   const deleteTransfer = (tfId: string) => {
@@ -906,10 +923,11 @@ export const BudgetProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   // Scheduled / Recurring
   const addRecurring = (name: string, amount: number, type: 'expense' | 'income', catId: string | null, accountId: string | null, day: number, start: string, end: string | null) => {
+    const id = 'rec_' + genId();
     setState(prev => {
       const activeAccount = accountId || prev.accounts.find(a => a.onBudget)?.id || null;
       const rec: Recurring = {
-        id: 'rec_' + genId(),
+        id,
         name,
         amount,
         type,
@@ -927,6 +945,7 @@ export const BudgetProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         recurring: [...prev.recurring, rec]
       };
     });
+    return id;
   };
 
   const editRecurring = (recId: string, name: string, amount: number, type: 'expense' | 'income', catId: string | null, accountId: string | null, day: number, start: string, end: string | null) => {
@@ -1189,6 +1208,7 @@ export const BudgetProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       deleteIncome,
       
       addTransfer,
+      editTransfer,
       deleteTransfer,
       
       addInstallment,

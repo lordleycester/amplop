@@ -4,6 +4,7 @@
  */
 
 import React from 'react';
+import { useBudget } from '../../context/BudgetContext';
 import { BottomSheet } from '../BottomSheet';
 import { AccountDetailSheet } from './AccountDetailSheet';
 import { AddAccountForm, EditAccountForm } from './AccountForms';
@@ -39,6 +40,7 @@ export const AppBottomSheets: React.FC<AppBottomSheetsProps> = ({
   showToast,
   showConfirm
 }) => {
+  const { deleteCategory } = useBudget();
   const {
     formName,
     setFormName,
@@ -64,6 +66,8 @@ export const AppBottomSheets: React.FC<AppBottomSheetsProps> = ({
     setFormRecurringType,
     formDayOfMonth,
     setFormDayOfMonth,
+    formRepeatMonthly,
+    setFormRepeatMonthly,
     qaSelectedGroupId,
     setQaSelectedGroupId
   } = form;
@@ -121,6 +125,16 @@ export const AppBottomSheets: React.FC<AppBottomSheetsProps> = ({
           category={sheet.data}
           onSetTarget={(category) => openSheet('set_target', `Set Target for ${category.name}`, category)}
           onMoveMoney={(category) => openSheet('move_money', `Move Money from ${category.name}`, category)}
+          onEditCategory={(category) => openSheet('edit_category', 'Edit Category', category)}
+          onDeleteCategory={(category) => showConfirm(
+            `Delete Category "${category.name}"?`,
+            'All spending transactions are kept but unassigned.',
+            () => {
+              deleteCategory(category.id);
+              closeSheet();
+              showToast(`Category "${category.name}" deleted`, null, undefined);
+            }
+          )}
         />
       )}
 
@@ -166,6 +180,8 @@ export const AppBottomSheets: React.FC<AppBottomSheetsProps> = ({
           setFormDate={setFormDate}
           formNote={formNote}
           setFormNote={setFormNote}
+          formRepeatMonthly={formRepeatMonthly}
+          setFormRepeatMonthly={setFormRepeatMonthly}
           qaSelectedGroupId={qaSelectedGroupId}
           setQaSelectedGroupId={setQaSelectedGroupId}
           closeSheet={closeSheet}
@@ -183,6 +199,8 @@ export const AppBottomSheets: React.FC<AppBottomSheetsProps> = ({
           setFormDate={setFormDate}
           formNote={formNote}
           setFormNote={setFormNote}
+          formRepeatMonthly={formRepeatMonthly}
+          setFormRepeatMonthly={setFormRepeatMonthly}
           closeSheet={closeSheet}
           showToast={showToast}
         />
@@ -238,6 +256,24 @@ export const AppBottomSheets: React.FC<AppBottomSheetsProps> = ({
 
       {sheet.type === 'add_transfer' && (
         <TransferForm
+          formAmountStr={formAmountStr}
+          setFormAmountStr={setFormAmountStr}
+          formSelectedId={formSelectedId}
+          setFormSelectedId={setFormSelectedId}
+          formSelectedId2={formSelectedId2}
+          setFormSelectedId2={setFormSelectedId2}
+          formDate={formDate}
+          setFormDate={setFormDate}
+          formNote={formNote}
+          setFormNote={setFormNote}
+          closeSheet={closeSheet}
+          showToast={showToast}
+        />
+      )}
+
+      {sheet.type === 'edit_transfer' && sheet.data && (
+        <TransferForm
+          transfer={sheet.data}
           formAmountStr={formAmountStr}
           setFormAmountStr={setFormAmountStr}
           formSelectedId={formSelectedId}
@@ -434,6 +470,7 @@ export const AppBottomSheets: React.FC<AppBottomSheetsProps> = ({
           closeSheet={closeSheet}
           showToast={showToast}
           showConfirm={showConfirm}
+          onEditTransfer={(transfer) => openSheet('edit_transfer', 'Edit Transfer', transfer)}
         />
       )}
     </BottomSheet>

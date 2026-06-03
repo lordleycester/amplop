@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { ArrowLeftRight } from 'lucide-react';
+import { ArrowLeftRight, Pencil, Trash2 } from 'lucide-react';
 import { useBudget } from '../../context/BudgetContext';
 import { fmtDateShort, fmtIDR, monthLabelShort, parseAmount } from '../../utils/helpers';
 import { getGroupColor } from '../../utils/sharedUtils';
@@ -15,12 +15,16 @@ interface CategoryDetailSheetProps {
   category: Category;
   onSetTarget: (category: Category) => void;
   onMoveMoney: (category: Category) => void;
+  onEditCategory: (category: Category) => void;
+  onDeleteCategory: (category: Category) => void;
 }
 
 export const CategoryDetailSheet: React.FC<CategoryDetailSheetProps> = ({
   category,
   onSetTarget,
-  onMoveMoney
+  onMoveMoney,
+  onEditCategory,
+  onDeleteCategory
 }) => {
   const { state, viewMonth, getAssigned, getSpent, getAvailable } = useBudget();
   const assigned = getAssigned(category.id, viewMonth);
@@ -75,6 +79,25 @@ export const CategoryDetailSheet: React.FC<CategoryDetailSheetProps> = ({
           id="cat-action-move"
         >
           Move Money
+        </button>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3" id="cat-sheet-manage-actions">
+        <button
+          onClick={() => onEditCategory(category)}
+          className="py-2 px-3 border border-gray-200 text-gray-600 hover:bg-gray-50 rounded-md text-xs font-semibold flex items-center justify-center gap-1.5 transition"
+          id="cat-action-edit"
+        >
+          <Pencil size={13} />
+          Edit Category
+        </button>
+        <button
+          onClick={() => onDeleteCategory(category)}
+          className="py-2 px-3 border border-red-100 text-red-600 hover:bg-red-50 rounded-md text-xs font-semibold flex items-center justify-center gap-1.5 transition"
+          id="cat-action-delete"
+        >
+          <Trash2 size={13} />
+          Delete
         </button>
       </div>
 

@@ -7,11 +7,12 @@ import React, { useMemo, useState } from 'react';
 import { useBudget } from '../context/BudgetContext';
 import { fmtIDR, fmtCompact, monthLabel, monthLabelShort } from '../utils/helpers';
 import { getGroupColor } from '../utils/sharedUtils';
-import { ChevronDown, Plus, Target as TargetIcon, Layers, TrendingUp, Sparkles, CheckCircle2, PieChart, Activity, ShoppingBag } from 'lucide-react';
+import { ChevronDown, Plus, Target as TargetIcon, Layers, TrendingUp, CheckCircle2, PieChart, Activity, ShoppingBag, Pencil } from 'lucide-react';
 import { Category, Group } from '../types';
 
 interface BudgetTabProps {
   onAddCategoryClick: (groupId: string) => void;
+  onEditGroupClick: (group: Group) => void;
   onCategoryClick: (cat: Category) => void;
   onMoveMoneyClick: (cat: Category) => void;
   onSetTargetClick: (cat: Category) => void;
@@ -21,6 +22,7 @@ interface BudgetTabProps {
 
 export const BudgetTab: React.FC<BudgetTabProps> = ({
   onAddCategoryClick,
+  onEditGroupClick,
   onCategoryClick,
   onMoveMoneyClick,
   onSetTargetClick,
@@ -332,9 +334,20 @@ export const BudgetTab: React.FC<BudgetTabProps> = ({
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
+                            onEditGroupClick(group);
+                          }}
+                          className="p-1 rounded opacity-100 lg:opacity-0 group-hover:opacity-100 hover:bg-white active:bg-gray-200 text-gray-400 hover:text-emerald-700 transition duration-150"
+                          title="Rename Group"
+                          id={`group-edit-btn-${group.id}`}
+                        >
+                          <Pencil size={13} />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
                             onAddCategoryClick(group.id);
                           }}
-                          className="p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-white active:bg-gray-200 text-gray-400 hover:text-emerald-700 transition duration-150"
+                          className="hidden lg:flex p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-white active:bg-gray-200 text-gray-400 hover:text-emerald-700 transition duration-150"
                           title="Add Category"
                           id={`group-add-btn-${group.id}`}
                         >

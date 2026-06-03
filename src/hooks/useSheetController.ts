@@ -24,6 +24,7 @@ type SheetPayloadMap = {
   income_detail: Income;
   edit_income: Income;
   transfer_detail: Transfer;
+  edit_transfer: Transfer;
 };
 
 type SheetWithPayload = keyof SheetPayloadMap;

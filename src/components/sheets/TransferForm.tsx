@@ -14,6 +14,7 @@ import type {
   SelectFormState,
   SheetCallbacks
 } from './SheetFormProps';
+import type { Transfer } from '../../types';
 
 interface TransferFormProps
   extends AmountFormState,
@@ -21,9 +22,12 @@ interface TransferFormProps
     SecondSelectFormState,
     DateFormState,
     NoteFormState,
-    SheetCallbacks {}
+    SheetCallbacks {
+  transfer?: Transfer;
+}
 
 export const TransferForm: React.FC<TransferFormProps> = ({
+  transfer,
   formAmountStr,
   setFormAmountStr,
   formSelectedId,
@@ -37,7 +41,8 @@ export const TransferForm: React.FC<TransferFormProps> = ({
   closeSheet,
   showToast
 }) => {
-  const { state, getAccountBalance, addTransfer } = useBudget();
+  const { state, getAccountBalance, addTransfer, editTransfer } = useBudget();
+  const isEdit = Boolean(transfer);
 
   return (
     <div className="space-y-4" id="form-transfer">
@@ -113,15 +118,19 @@ export const TransferForm: React.FC<TransferFormProps> = ({
           const transferAmount = parseAmount(formAmountStr);
           if (!transferAmount || !formSelectedId || !formSelectedId2 || formSelectedId === formSelectedId2) return;
 
-          addTransfer(formSelectedId, formSelectedId2, transferAmount, formDate, formNote.trim());
+          if (transfer) {
+            editTransfer(transfer.id, formSelectedId, formSelectedId2, transferAmount, formDate, formNote.trim());
+          } else {
+            addTransfer(formSelectedId, formSelectedId2, transferAmount, formDate, formNote.trim());
+          }
           closeSheet();
-          showToast(`Transferred ${fmtIDR(transferAmount)} successfully`, null, undefined);
+          showToast(isEdit ? 'Transfer details updated' : `Transferred ${fmtIDR(transferAmount)} successfully`, null, undefined);
         }}
         disabled={!formSelectedId || !formSelectedId2 || formSelectedId === formSelectedId2 || !parseAmount(formAmountStr)}
         className="w-full py-2.5 bg-emerald-800 disabled:opacity-30 hover:bg-emerald-900 text-white font-semibold text-xs rounded transition flex items-center justify-center gap-1.5"
         id="tf-submit-btn"
       >
-        Transfer Funds
+        {isEdit ? 'Save Transfer' : 'Transfer Funds'}
       </button>
     </div>
   );
