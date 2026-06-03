@@ -20,6 +20,7 @@ export const useSheetFormState = (sheet: SheetState, defaultCategoryGroupId: str
   const [formMonthlyPaymentStr, setFormMonthlyPaymentStr] = useState('');
   const [formRecurringType, setFormRecurringType] = useState<'expense' | 'income'>('expense');
   const [formDayOfMonth, setFormDayOfMonth] = useState('1');
+  const [formRepeatMonthly, setFormRepeatMonthly] = useState(false);
   const [qaSelectedGroupId, setQaSelectedGroupId] = useState('all');
 
   useEffect(() => {
@@ -37,6 +38,7 @@ export const useSheetFormState = (sheet: SheetState, defaultCategoryGroupId: str
     setFormMonthlyPaymentStr('');
     setFormRecurringType('expense');
     setFormDayOfMonth('1');
+    setFormRepeatMonthly(false);
     setQaSelectedGroupId('all');
 
     switch (sheet.type) {
@@ -87,6 +89,13 @@ export const useSheetFormState = (sheet: SheetState, defaultCategoryGroupId: str
         setFormDate(sheet.data.date);
         setFormNote(sheet.data.note || '');
         break;
+      case 'edit_transfer':
+        setFormAmountStr(String(sheet.data.amount));
+        setFormSelectedId(sheet.data.fromAccountId || '');
+        setFormSelectedId2(sheet.data.toAccountId || '');
+        setFormDate(sheet.data.date);
+        setFormNote(sheet.data.note || '');
+        break;
       case 'edit_recurring': {
         const recurring = sheet.data as Recurring;
         setFormRecurringType(recurring.type);
@@ -127,6 +136,8 @@ export const useSheetFormState = (sheet: SheetState, defaultCategoryGroupId: str
     setFormRecurringType,
     formDayOfMonth,
     setFormDayOfMonth,
+    formRepeatMonthly,
+    setFormRepeatMonthly,
     qaSelectedGroupId,
     setQaSelectedGroupId
   };

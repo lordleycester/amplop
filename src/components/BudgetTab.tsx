@@ -7,18 +7,26 @@ import React, { useMemo, useState } from 'react';
 import { useBudget } from '../context/BudgetContext';
 import { fmtIDR, fmtCompact, monthLabel, monthLabelShort } from '../utils/helpers';
 import { getGroupColor } from '../utils/sharedUtils';
-import { ChevronDown, Plus, Target as TargetIcon, Layers, TrendingUp, Sparkles, CheckCircle2, PieChart, Activity, ShoppingBag } from 'lucide-react';
+import { ChevronDown, Plus, Target as TargetIcon, Layers, TrendingUp, CheckCircle2, PieChart, Activity, ShoppingBag, Pencil } from 'lucide-react';
 import { Category, Group } from '../types';
 
 interface BudgetTabProps {
   onAddCategoryClick: (groupId: string) => void;
+  onEditGroupClick: (group: Group) => void;
   onCategoryClick: (cat: Category) => void;
+  onMoveMoneyClick: (cat: Category) => void;
+  onSetTargetClick: (cat: Category) => void;
+  onActivityClick: (cat: Category) => void;
   onSetToast: (msg: string, actionLabel?: string | null, actionFn?: () => void) => void;
 }
 
 export const BudgetTab: React.FC<BudgetTabProps> = ({
   onAddCategoryClick,
+  onEditGroupClick,
   onCategoryClick,
+  onMoveMoneyClick,
+  onSetTargetClick,
+  onActivityClick,
   onSetToast
 }) => {
   const {
@@ -326,9 +334,20 @@ export const BudgetTab: React.FC<BudgetTabProps> = ({
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
+                            onEditGroupClick(group);
+                          }}
+                          className="p-1 rounded opacity-100 lg:opacity-0 group-hover:opacity-100 hover:bg-white active:bg-gray-200 text-gray-400 hover:text-emerald-700 transition duration-150"
+                          title="Rename Group"
+                          id={`group-edit-btn-${group.id}`}
+                        >
+                          <Pencil size={13} />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
                             onAddCategoryClick(group.id);
                           }}
-                          className="p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-white active:bg-gray-200 text-gray-400 hover:text-emerald-700 transition duration-150"
+                          className="hidden lg:flex p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-white active:bg-gray-200 text-gray-400 hover:text-emerald-700 transition duration-150"
                           title="Add Category"
                           id={`group-add-btn-${group.id}`}
                         >
@@ -382,14 +401,18 @@ export const BudgetTab: React.FC<BudgetTabProps> = ({
                                     <div className="text-xs font-semibold text-gray-800 flex items-center gap-1.5 min-w-0" id={`cat-name-badge-wrapper-${cat.id}`}>
                                       <span className="truncate pr-1" id={`cat-name-span-${cat.id}`}>{cat.name}</span>
                                       {cat.target && (
-                                        <span 
-                                          className="text-[9px] font-bold text-slate-400 bg-slate-100 flex items-center gap-0.5 rounded px-1.5 py-0.5 font-mono tracking-wider cursor-help shrink-0"
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            onSetTargetClick(cat);
+                                          }}
+                                          className="text-[9px] font-bold text-slate-400 bg-slate-100 flex items-center gap-0.5 rounded px-1.5 py-0.5 font-mono tracking-wider cursor-pointer shrink-0 hover:bg-emerald-50 hover:text-emerald-800 transition"
                                           title={`${cat.target.type === 'monthly' ? 'Monthly' : cat.target.type === 'by_date' ? 'By Date' : 'Monthly Builder'} Target: ${fmtCompact(cat.target.amount)}`}
                                           id={`cat-target-badge-${cat.id}`}
                                         >
                                           <TargetIcon size={9} />
                                           {fmtCompact(cat.target.amount)}
-                                        </span>
+                                        </button>
                                       )}
                                     </div>
                                     <span className={`text-[10px] font-medium tracking-tight mt-0.5 ${status.cls}`} id={`cat-status-${cat.id}`}>
@@ -424,15 +447,25 @@ export const BudgetTab: React.FC<BudgetTabProps> = ({
                                 </div>
 
                                 {/* Activity (Spent) cell */}
-                                <div className="text-right text-xs font-mono font-medium text-gray-400 px-1 shrink-0" id={`cat-spent-${cat.id}`}>
-                                  {spentValue > 0 ? `-${fmtCompact(spentValue)}` : '—'}
+                                <div className="text-right px-1 shrink-0" id={`cat-spent-${cat.id}`}>
+                                  <button
+                                    onClick={() => onActivityClick(cat)}
+                                    className="font-mono text-xs font-medium text-gray-400 px-2 py-1 rounded border border-transparent hover:border-gray-200/50 hover:bg-slate-100 transition"
+                                    id={`cat-spent-btn-${cat.id}`}
+                                  >
+                                    {spentValue > 0 ? `-${fmtCompact(spentValue)}` : '—'}
+                                  </button>
                                 </div>
 
                                 {/* Flow rightmost available badge */}
                                 <div className="flex justify-end pr-1.5 shrink-0" id={`cat-avail-spot-${cat.id}`}>
-                                  <span className={`text-[10px] font-bold font-mono px-2 py-0.5 rounded-full select-none ${availStyleCls}`} id={`cat-avail-badge-${cat.id}`}>
+                                  <button
+                                    onClick={() => onMoveMoneyClick(cat)}
+                                    className={`text-[10px] font-bold font-mono px-2 py-0.5 rounded-full select-none transition hover:brightness-95 active:scale-95 ${availStyleCls}`}
+                                    id={`cat-avail-badge-${cat.id}`}
+                                  >
                                     {fmtCompact(availableValue)}
-                                  </span>
+                                  </button>
                                 </div>
 
                                 {/* Interactive progress mini-bar */}

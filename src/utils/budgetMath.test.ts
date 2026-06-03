@@ -11,6 +11,7 @@ import {
   getAvailable,
   getNetWorth,
   getRTA,
+  rebalanceBudgetAssignments,
   totalInstallmentObligation
 } from './budgetMath.ts';
 
@@ -37,6 +38,10 @@ function group(id: string): Group {
 
 function category(id: string, groupId: string): Category {
   return { id, name: id, emoji: '', groupId, sort: 0, target: null };
+}
+
+function categoryWithTarget(id: string, groupId: string, target: Category['target']): Category {
+  return { ...category(id, groupId), target };
 }
 
 function account(id: string, type: Account['type'], startingBalance: number): Account {
@@ -213,4 +218,132 @@ test('unassigned surplus can remain Ready to Assign', () => {
   });
 
   assert.equal(getRTA(state, month), 2000000);
+});
+
+test('rebalance moves unspent assigned money into an overspent category', () => {
+  const state = makeState({
+    categories: [
+      category('category_a', 'everyday'),
+      category('category_b', 'everyday')
+    ],
+    budgets: {
+      [month]: {
+        category_a: 2000000,
+        category_b: 1000000
+      }
+    },
+    transactions: [
+      { id: 'a_spend', date: '2026-06-10', amount: 1000000, catId: 'category_a', accountId: 'bank', note: '' },
+      { id: 'b_spend', date: '2026-06-11', amount: 2000000, catId: 'category_b', accountId: 'bank', note: '' }
+    ]
+  });
+
+  const rebalanced = rebalanceBudgetAssignments(state, month);
+
+  assert.equal(rebalanced.category_a, 1000000);
+  assert.equal(rebalanced.category_b, 2000000);
+});
+
+test('rebalance uses Ready to Assign before moving money from categories', () => {
+  const state = makeState({
+    accounts: [account('bank', 'checking', 5000000)],
+    categories: [
+      category('surplus', 'everyday'),
+      category('overspent', 'everyday')
+    ],
+    budgets: {
+      [month]: {
+        surplus: 2000000,
+        overspent: 1000000
+      }
+    },
+    transactions: [
+      { id: 'surplus_spend', date: '2026-06-10', amount: 1000000, catId: 'surplus', accountId: 'bank', note: '' },
+      { id: 'overspend', date: '2026-06-11', amount: 2000000, catId: 'overspent', accountId: 'bank', note: '' }
+    ]
+  });
+
+  const rebalanced = rebalanceBudgetAssignments(state, month);
+
+  assert.equal(rebalanced.surplus, 2000000);
+  assert.equal(rebalanced.overspent, 2000000);
+});
+
+test('rebalance uses remaining Ready to Assign before borrowing the rest from flexible categories', () => {
+  const state = makeState({
+    accounts: [account('bank', 'checking', 3500000)],
+    categories: [
+      categoryWithTarget('builder', 'everyday', { type: 'monthly_builder', amount: 2000000 }),
+      category('overspent', 'everyday')
+    ],
+    budgets: {
+      [month]: {
+        builder: 2000000,
+        overspent: 1000000
+      }
+    },
+    transactions: [
+      { id: 'builder_spend', date: '2026-06-10', amount: 1000000, catId: 'builder', accountId: 'bank', note: '' },
+      { id: 'overspend', date: '2026-06-11', amount: 2500000, catId: 'overspent', accountId: 'bank', note: '' }
+    ]
+  });
+
+  const rebalanced = rebalanceBudgetAssignments(state, month);
+
+  assert.equal(rebalanced.builder, 1000000);
+  assert.equal(rebalanced.overspent, 2500000);
+});
+
+test('rebalance uses monthly builder and by-date categories as donors first', () => {
+  const state = makeState({
+    categories: [
+      category('no_target', 'everyday'),
+      categoryWithTarget('builder', 'everyday', { type: 'monthly_builder', amount: 2000000 }),
+      categoryWithTarget('by_date', 'everyday', { type: 'by_date', amount: 3000000, dueDate: '2026-12' }),
+      category('overspent', 'everyday')
+    ],
+    budgets: {
+      [month]: {
+        no_target: 2000000,
+        builder: 2000000,
+        by_date: 2000000,
+        overspent: 1000000
+      }
+    },
+    transactions: [
+      { id: 'builder_spend', date: '2026-06-10', amount: 1000000, catId: 'builder', accountId: 'bank', note: '' },
+      { id: 'overspend', date: '2026-06-11', amount: 2500000, catId: 'overspent', accountId: 'bank', note: '' }
+    ]
+  });
+
+  const rebalanced = rebalanceBudgetAssignments(state, month);
+
+  assert.equal(rebalanced.builder, 1000000);
+  assert.equal(rebalanced.by_date, 1500000);
+  assert.equal(rebalanced.no_target, 2000000);
+  assert.equal(rebalanced.overspent, 2500000);
+});
+
+test('rebalance only moves money that is still available', () => {
+  const state = makeState({
+    categories: [
+      categoryWithTarget('builder', 'everyday', { type: 'monthly_builder', amount: 2000000 }),
+      category('overspent', 'everyday')
+    ],
+    budgets: {
+      [month]: {
+        builder: 2000000,
+        overspent: 1000000
+      }
+    },
+    transactions: [
+      { id: 'builder_spend', date: '2026-06-10', amount: 1800000, catId: 'builder', accountId: 'bank', note: '' },
+      { id: 'overspend', date: '2026-06-11', amount: 2000000, catId: 'overspent', accountId: 'bank', note: '' }
+    ]
+  });
+
+  const rebalanced = rebalanceBudgetAssignments(state, month);
+
+  assert.equal(rebalanced.builder, 1800000);
+  assert.equal(rebalanced.overspent, 1200000);
 });

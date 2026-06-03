@@ -12,6 +12,7 @@ import type {
   DateFormState,
   NoteFormState,
   QuickAddFilterState,
+  RepeatMonthlyState,
   SecondSelectFormState,
   SelectFormState,
   SheetCallbacks
@@ -24,6 +25,7 @@ interface QuickAddExpenseFormProps
     DateFormState,
     NoteFormState,
     QuickAddFilterState,
+    RepeatMonthlyState,
     SheetCallbacks {}
 
 export const QuickAddExpenseForm: React.FC<QuickAddExpenseFormProps> = ({
@@ -37,13 +39,16 @@ export const QuickAddExpenseForm: React.FC<QuickAddExpenseFormProps> = ({
   setFormDate,
   formNote,
   setFormNote,
+  formRepeatMonthly,
+  setFormRepeatMonthly,
   qaSelectedGroupId,
   setQaSelectedGroupId,
   closeSheet,
   showToast
 }) => {
-  const { state, addExpense } = useBudget();
+  const { state, addExpense, addRecurring } = useBudget();
   const budgetAccounts = state.accounts.filter(a => a.onBudget);
+  const recurringDay = Math.min(28, Math.max(1, Number(formDate.split('-')[2]) || 1));
 
   return (
     <div className="space-y-4" id="form-quick-add">
@@ -172,16 +177,54 @@ export const QuickAddExpenseForm: React.FC<QuickAddExpenseFormProps> = ({
         </div>
       </div>
 
+      <label
+        className="flex items-center justify-between gap-3 border border-gray-150 bg-white rounded p-3 cursor-pointer select-none"
+        id="qa-repeat-monthly"
+      >
+        <div className="min-w-0">
+          <div className="text-xs font-bold text-gray-800">Repeat monthly</div>
+          <div className="text-[10px] text-gray-400 font-semibold mt-0.5">
+            Uses day {recurringDay} each month, starting from this transaction date.
+          </div>
+        </div>
+        <input
+          type="checkbox"
+          checked={formRepeatMonthly}
+          onChange={(e) => setFormRepeatMonthly(e.target.checked)}
+          className="w-4 h-4 shrink-0 accent-emerald-800"
+          id="qa-repeat-checkbox"
+        />
+      </label>
+
       <button
         onClick={() => {
           const spendingValue = parseAmount(formAmountStr);
           if (!spendingValue || !formSelectedId) return;
 
           const resolvedAccId = formSelectedId2 || budgetAccounts[0]?.id || null;
+          const note = formNote.trim();
+          const recurringId = formRepeatMonthly
+            ? addRecurring(
+                note || state.categories.find(c => c.id === formSelectedId)?.name || 'Monthly expense',
+                spendingValue,
+                'expense',
+                formSelectedId,
+                resolvedAccId,
+                recurringDay,
+                formDate,
+                null
+              )
+            : undefined;
 
-          addExpense(spendingValue, formDate, formSelectedId, resolvedAccId, formNote.trim());
+          addExpense(spendingValue, formDate, formSelectedId, resolvedAccId, note, recurringId);
           closeSheet();
-          showToast(`Added ${fmtIDR(spendingValue)} to expense feed`, null, undefined);
+          showToast(
+            formRepeatMonthly
+              ? `Expense added. It will repeat monthly.`
+              : `Added ${fmtIDR(spendingValue)} to expense feed`,
+            null,
+            undefined
+          );
         }}
         disabled={!parseAmount(formAmountStr) || !formSelectedId}
         className="w-full py-2.5 bg-emerald-800 disabled:opacity-30 hover:bg-emerald-900 text-white font-semibold text-xs rounded shadow transition"

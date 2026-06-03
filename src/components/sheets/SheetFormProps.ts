@@ -54,6 +54,11 @@ export interface RecurringFormState {
   setFormDayOfMonth: (value: string) => void;
 }
 
+export interface RepeatMonthlyState {
+  formRepeatMonthly: boolean;
+  setFormRepeatMonthly: (value: boolean) => void;
+}
+
 export interface TargetFormState {
   formTargetType: 'none' | 'monthly' | 'monthly_builder' | 'by_date';
   setFormTargetType: (value: 'none' | 'monthly' | 'monthly_builder' | 'by_date') => void;

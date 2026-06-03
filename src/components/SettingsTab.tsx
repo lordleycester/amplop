@@ -5,35 +5,13 @@
 
 import React, { useState } from 'react';
 import { useBudget } from '../context/BudgetContext';
-import { fmtIDR, fmtCompact, monthLabelShort } from '../utils/helpers';
-import { getGroupColor, installmentEndDate, installmentIsActive, installmentIsCompleted, installmentRemainingMonths } from '../utils/sharedUtils';
 import { 
-  Pencil, Trash2, Plus, Play, Pause, CreditCard, Calendar, Cloud, Save, RefreshCw, Trash, Upload, Download, FileSpreadsheet, Lock, ArrowUp, ArrowDown, BookOpen
+  Save, Trash, Upload, Download, FileSpreadsheet, Lock, BookOpen
 } from 'lucide-react';
-import { Category, Group, Account, Installment, Recurring, SyncConfig } from '../types';
+import { SyncConfig } from '../types';
 
 interface SettingsTabProps {
   onOpenGuide: () => void;
-  // Groups
-  onAddGroupClick: () => void;
-  onEditGroupClick: (group: Group) => void;
-  onDeleteGroupClick: (group: Group) => void;
-  onAddCategoryClick: (groupId: string) => void;
-  // Categories
-  onEditCategoryClick: (cat: Category) => void;
-  onDeleteCategoryClick: (cat: Category) => void;
-  // Accounts
-  onAddAccountClick: () => void;
-  onEditAccountClick: (acc: Account) => void;
-  onDeleteAccountClick: (acc: Account) => void;
-  // Installments
-  onAddInstallmentClick: () => void;
-  onEditInstallmentClick: (inst: Installment) => void;
-  onDeleteInstallmentClick: (inst: Installment) => void;
-  // Recurring
-  onAddRecurringClick: () => void;
-  onEditRecurringClick: (rec: Recurring) => void;
-  onDeleteRecurringClick: (rec: Recurring) => void;
   // Toast & Sync callbacks
   onSetToast: (msg: string, actionLabel?: string | null, actionFn?: () => void) => void;
   onShowConfirm: (title: string, msg: string, confirmFn: () => void) => void;
@@ -97,28 +75,19 @@ async function decryptData(payload: any, passphrase: string): Promise<string> {
   return new TextDecoder().decode(plain);
 }
 
+const sectionHeadingClass = 'settings-section-heading text-[10px] font-bold uppercase tracking-wider py-3 px-4 select-none shrink-0';
+const quietButtonClass = 'settings-press-button settings-press-quiet w-full py-3 px-5 text-left text-xs font-bold flex items-center gap-2 transition';
+const primaryButtonClass = 'settings-press-button settings-press-primary w-full py-2.5 px-4 font-bold text-xs transition flex items-center justify-center gap-1.5';
+const secondaryButtonClass = 'settings-press-button settings-press-secondary py-2.5 px-4 font-bold text-xs transition flex items-center justify-center gap-1.5';
+const dangerButtonClass = 'settings-press-button settings-press-danger w-full py-3.5 px-5 text-left text-xs font-bold flex items-center gap-2 transition';
+
 export const SettingsTab: React.FC<SettingsTabProps> = ({
   onOpenGuide,
-  onAddGroupClick,
-  onEditGroupClick,
-  onDeleteGroupClick,
-  onAddCategoryClick,
-  onEditCategoryClick,
-  onDeleteCategoryClick,
-  onAddAccountClick,
-  onEditAccountClick,
-  onDeleteAccountClick,
-  onAddInstallmentClick,
-  onEditInstallmentClick,
-  onDeleteInstallmentClick,
-  onAddRecurringClick,
-  onEditRecurringClick,
-  onDeleteRecurringClick,
   onSetToast,
   onShowConfirm
 }) => {
   const { 
-    state, viewMonth, toggleRecurringActive, clearAllData, importBackup, saveSyncConfig, getSyncConfig, getAccountBalance, moveGroup, moveCategory
+    state, clearAllData, importBackup, saveSyncConfig, getSyncConfig
   } = useBudget();
 
   // Local Sync Settings form state
@@ -350,372 +319,26 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
     }
   };
 
-  // Grouped installments
-  const activeInst = state.installments.filter(i => installmentIsActive(i, viewMonth));
-  const upcomingInst = state.installments.filter(i => i.startDate > viewMonth);
-  const completedInst = state.installments.filter(i => installmentIsCompleted(i, viewMonth));
-
   return (
     <div className="flex-1 overflow-y-auto bg-gray-50/50 pb-12 select-none" id="settings-tab-view">
       {/* Guide section */}
-      <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider py-2 px-4 bg-gray-100 select-none shrink-0" id="settings-sec-head-guide">
+      <div className={sectionHeadingClass} id="settings-sec-head-guide">
         Getting Started
       </div>
 
-      <div className="bg-white divide-y divide-gray-150 overflow-hidden" id="settings-guide-panel">
+      <div className="bg-white p-3 overflow-hidden" id="settings-guide-panel">
         <button
           onClick={onOpenGuide}
-          className="w-full py-3 px-5 hover:bg-gray-50 text-left text-xs font-semibold text-gray-700 flex items-center gap-2 transition"
+          className={quietButtonClass}
           id="settings-open-guide-btn"
         >
-          <BookOpen size={14} className="text-gray-400" />
+          <BookOpen size={14} className="settings-button-icon" />
           Budgeting Guide
-        </button>
-      </div>
-      
-      {/* Category Groups Section */}
-      <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider py-2 px-4 bg-gray-100 select-none shrink-0 mt-5" id="settings-sec-head-groups">
-        Category Groups
-      </div>
-
-      <div className="divide-y divide-gray-200 bg-white" id="settings-groups-list">
-        {state.groups
-          .slice()
-          .sort((a, b) => a.sort - b.sort)
-          .map(g => {
-            const groupCats = state.categories.filter(c => c.groupId === g.id).sort((a, b) => a.sort - b.sort);
-            const groupColor = getGroupColor(g.id);
-
-            return (
-              <div key={g.id} className="p-1" id={`settings-gbox-${g.id}`}>
-                {/* Group Heading Header Row */}
-                <div className="flex items-center justify-between py-2 px-4 border-b border-gray-100 bg-gray-50/50" style={{ borderLeft: `3px solid ${groupColor}` }} id={`settings-ghead-${g.id}`}>
-                  <span className="text-xs font-bold font-sans uppercase tracking-wide" style={{ color: groupColor }} id={`settings-gtxt-${g.id}`}>{g.name}</span>
-                  <div className="flex gap-2" id={`settings-gcontrols-${g.id}`}>
-                    <button
-                      onClick={() => moveGroup(g.id, 'up')}
-                      className="p-1 rounded hover:bg-white text-gray-400 hover:text-emerald-700 transition"
-                      title="Move Group Up"
-                      id={`settings-g-move-up-${g.id}`}
-                    >
-                      <ArrowUp size={12} />
-                    </button>
-                    <button
-                      onClick={() => moveGroup(g.id, 'down')}
-                      className="p-1 rounded hover:bg-white text-gray-400 hover:text-emerald-700 transition"
-                      title="Move Group Down"
-                      id={`settings-g-move-down-${g.id}`}
-                    >
-                      <ArrowDown size={12} />
-                    </button>
-                    <button
-                      onClick={() => onEditGroupClick(g)}
-                      className="p-1 rounded hover:bg-white text-gray-400 hover:text-emerald-700 transition"
-                      title="Rename Group"
-                      id={`settings-g-edit-${g.id}`}
-                    >
-                      <Pencil size={12} />
-                    </button>
-                    <button
-                      onClick={() => onDeleteGroupClick(g)}
-                      className="p-1 rounded hover:bg-white text-gray-400 hover:text-red-600 transition"
-                      title="Delete Group"
-                      id={`settings-g-del-${g.id}`}
-                    >
-                      <Trash2 size={12} />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Subcategories */}
-                <div className="divide-y divide-gray-50" id={`settings-g-cats-${g.id}`}>
-                  {groupCats.map(c => (
-                    <div key={c.id} className="flex items-center justify-between p-3" id={`settings-cat-row-${c.id}`}>
-                      <div className="flex items-center gap-2 min-w-0" id={`settings-cat-label-${c.id}`}>
-                        <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: groupColor }} />
-                        <div className="text-xs font-semibold text-gray-700 truncate">{c.name}</div>
-                      </div>
-                      
-                      <div className="flex gap-2" id={`settings-cat-controls-${c.id}`}>
-                        <button
-                          onClick={() => moveCategory(c.id, 'up')}
-                          className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-emerald-700 transition"
-                          title="Move Category Up"
-                          id={`settings-c-move-up-${c.id}`}
-                        >
-                          <ArrowUp size={11} />
-                        </button>
-                        <button
-                          onClick={() => moveCategory(c.id, 'down')}
-                          className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-emerald-700 transition"
-                          title="Move Category Down"
-                          id={`settings-c-move-down-${c.id}`}
-                        >
-                          <ArrowDown size={11} />
-                        </button>
-                        <button
-                          onClick={() => onEditCategoryClick(c)}
-                          className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-emerald-700 transition"
-                          id={`settings-c-edit-${c.id}`}
-                        >
-                          <Pencil size={12} />
-                        </button>
-                        <button
-                          onClick={() => onDeleteCategoryClick(c)}
-                          className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-red-600 transition"
-                          id={`settings-c-del-${c.id}`}
-                        >
-                          <Trash2 size={12} />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                  
-                  <button
-                    onClick={() => onAddCategoryClick(g.id)}
-                    className="w-full text-left py-2.5 px-4 text-xs font-bold text-emerald-800 hover:bg-gray-100 flex items-center gap-1.5 transition"
-                    id={`settings-g-addcat-btn-${g.id}`}
-                  >
-                    <Plus size={13} />
-                    Add category to {g.name}
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-        
-        <button
-          onClick={onAddGroupClick}
-          className="w-full text-left py-3 px-5 text-xs font-bold text-emerald-800 hover:bg-gray-100 flex items-center gap-1.5 bg-white border-t border-gray-200 transition"
-          id="settings-add-group-btn"
-        >
-          <Plus size={14} />
-          + Add Group
-        </button>
-      </div>
-
-      {/* Account Manage section */}
-      <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider py-2 px-4 bg-gray-100 mt-5" id="settings-sec-head-accounts">
-        Accounts
-      </div>
-
-      <div className="bg-white divide-y divide-gray-150 overflow-hidden" id="settings-accounts-list">
-        {state.accounts.map(acc => {
-          const balance = getAccountBalance(acc.id);
-          return (
-            <div key={acc.id} className="flex items-center justify-between p-3 hover:bg-slate-50/50" id={`settings-acc-row-${acc.id}`}>
-              <div className="min-w-0" id={`settings-acc-info-${acc.id}`}>
-                <div className="text-xs font-semibold text-gray-800 truncate">{acc.name}</div>
-                <div className="text-[9px] font-bold text-gray-400 uppercase mt-0.5 tracking-wider font-mono">
-                  {acc.type} · {acc.onBudget ? 'On Budget' : 'Tracking'} · {fmtIDR(balance)}
-                </div>
-              </div>
-
-              <div className="flex gap-2" id={`settings-acc-controls-${acc.id}`}>
-                <button
-                  onClick={() => onEditAccountClick(acc)}
-                  className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-emerald-700 transition"
-                  id={`settings-a-edit-${acc.id}`}
-                >
-                  <Pencil size={12} />
-                </button>
-                <button
-                  onClick={() => onDeleteAccountClick(acc)}
-                  className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-red-600 transition"
-                  id={`settings-a-del-${acc.id}`}
-                >
-                  <Trash2 size={12} />
-                </button>
-              </div>
-            </div>
-          );
-        })}
-        <button
-          onClick={onAddAccountClick}
-          className="w-full text-left py-3 px-5 text-xs font-bold text-emerald-800 hover:bg-gray-100 flex items-center gap-1.5 transition"
-          id="settings-add-account-btn"
-        >
-          <Plus size={14} />
-          + Add Account
-        </button>
-      </div>
-
-      {/* Installments in settings section */}
-      <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider py-2 px-4 bg-gray-100 mt-5" id="settings-sec-head-cicilan">
-        Installments
-      </div>
-
-      <div className="bg-white divide-y divide-gray-150 overflow-hidden" id="settings-cicilan-list">
-        {state.installments.length === 0 ? (
-          <div className="p-4 text-center text-xs text-gray-400 italic">No installments templates configured.</div>
-        ) : (
-          <>
-            {activeInst.map(inst => {
-              const remaining = installmentRemainingMonths(inst, viewMonth);
-              return (
-                <div key={inst.id} className="flex items-center justify-between p-3 hover:bg-slate-50" id={`settings-inst-row-${inst.id}`}>
-                  <div className="min-w-0" id={`settings-inst-info-${inst.id}`}>
-                    <div className="text-xs font-semibold text-gray-800 truncate flex items-center gap-1.5">
-                      <CreditCard size={12} className="text-amber-500" />
-                      {inst.name}
-                    </div>
-                    <div className="text-[9px] text-gray-400 font-bold uppercase mt-0.5 tracking-wider font-mono">
-                      {fmtIDR(inst.monthlyPayment)}/mo · {remaining} mo remaining · Active
-                    </div>
-                  </div>
-
-                  <div className="flex gap-2" id={`settings-inst-controls-${inst.id}`}>
-                    <button
-                      onClick={() => onEditInstallmentClick(inst)}
-                      className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-emerald-700 transition"
-                      id={`settings-i-edit-${inst.id}`}
-                    >
-                      <Pencil size={12} />
-                    </button>
-                    <button
-                      onClick={() => onDeleteInstallmentClick(inst)}
-                      className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-red-600 transition"
-                      id={`settings-i-del-${inst.id}`}
-                    >
-                      <Trash2 size={12} />
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-
-            {upcomingInst.map(inst => (
-              <div key={inst.id} className="flex items-center justify-between p-3 hover:bg-slate-50 bg-gray-50/30" id={`settings-inst-uprow-${inst.id}`}>
-                <div className="min-w-0 opacity-70">
-                  <div className="text-xs font-semibold text-gray-800 truncate flex items-center gap-1.5">
-                    <CreditCard size={12} className="text-amber-500" />
-                    {inst.name}
-                  </div>
-                  <div className="text-[9px] text-amber-600 font-bold uppercase mt-0.5 tracking-wider font-mono">
-                    Starts {monthLabelShort(inst.startDate)} · {inst.totalMonths} mo (Upcoming)
-                  </div>
-                </div>
-
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => onEditInstallmentClick(inst)}
-                    className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-emerald-700 transition"
-                  >
-                    <Pencil size={12} />
-                  </button>
-                  <button
-                    onClick={() => onDeleteInstallmentClick(inst)}
-                    className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-red-600 transition"
-                  >
-                    <Trash2 size={12} />
-                  </button>
-                </div>
-              </div>
-            ))}
-
-            {completedInst.map(inst => (
-              <div key={inst.id} className="flex items-center justify-between p-3 hover:bg-slate-50 opacity-50" id={`settings-inst-comprow-${inst.id}`}>
-                <div className="min-w-0">
-                  <div className="text-xs font-semibold text-gray-800 truncate flex items-center gap-1.5">
-                    <CreditCard size={12} className="text-amber-500 opacity-60" />
-                    {inst.name}
-                  </div>
-                  <div className="text-[9px] text-emerald-800 font-bold uppercase mt-0.5 tracking-wider font-mono">
-                    Paid Off {monthLabelShort(installmentEndDate(inst))} (Paid Off)
-                  </div>
-                </div>
-
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => onDeleteInstallmentClick(inst)}
-                    className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-red-600 transition"
-                  >
-                    <Trash2 size={12} />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </>
-        )}
-        
-        <button
-          onClick={onAddInstallmentClick}
-          className="w-full text-left py-3 px-5 text-xs font-bold text-emerald-800 hover:bg-gray-100 flex items-center gap-1.5 transition"
-          id="settings-add-cicilan-btn"
-        >
-          <Plus size={14} />
-          + Add Installment
-        </button>
-      </div>
-
-      {/* Recurring Scheduled list */}
-      <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider py-2 px-4 bg-gray-100 mt-5" id="settings-sec-head-recurring">
-        Recurring template schedules
-      </div>
-
-      <div className="bg-white divide-y divide-gray-150 overflow-hidden" id="settings-recurring-list">
-        {state.recurring.length === 0 ? (
-          <div className="p-4 text-center text-xs text-gray-400 italic">No recurring schedules added yet.</div>
-        ) : (
-          state.recurring.slice().sort((a,b) => a.dayOfMonth - b.dayOfMonth).map(rec => {
-            const isIncome = rec.type === 'income';
-            
-            return (
-              <div key={rec.id} className={`flex items-center justify-between p-3 ${rec.active ? '' : 'opacity-40'}`} id={`settings-rec-row-${rec.id}`}>
-                <div className="min-w-0" id={`settings-rec-info-${rec.id}`}>
-                  <div className="text-xs font-semibold text-gray-800 truncate flex items-center gap-1.5">
-                    <Calendar size={13} className="text-gray-400" />
-                    {rec.name}
-                  </div>
-                  <div className="text-[9px] font-bold mt-0.5 tracking-wider font-mono uppercase">
-                    <span className={isIncome ? 'text-emerald-700' : 'text-red-700'}>
-                      {isIncome ? '+' : '−'}{fmtIDR(rec.amount)}
-                    </span>
-                    {` · Tgl ${rec.dayOfMonth} · `}
-                    {rec.active ? <span className="text-blue-600">Active</span> : <span className="text-amber-600">Paused</span>}
-                  </div>
-                </div>
-
-                <div className="flex gap-1.5" id={`settings-rec-controls-${rec.id}`}>
-                  <button
-                    onClick={() => toggleRecurringActive(rec.id)}
-                    className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition"
-                    title={rec.active ? 'Pause Template' : 'Resume Template'}
-                    id={`settings-r-pause-${rec.id}`}
-                  >
-                    {rec.active ? <Pause size={12} /> : <Play size={12} />}
-                  </button>
-                  <button
-                    onClick={() => onEditRecurringClick(rec)}
-                    className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-emerald-700 transition"
-                    id={`settings-r-edit-${rec.id}`}
-                  >
-                    <Pencil size={12} />
-                  </button>
-                  <button
-                    onClick={() => onDeleteRecurringClick(rec)}
-                    className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-red-600 transition"
-                    id={`settings-r-del-${rec.id}`}
-                  >
-                    <Trash2 size={12} />
-                  </button>
-                </div>
-              </div>
-            );
-          })
-        )}
-        <button
-          onClick={onAddRecurringClick}
-          className="w-full text-left py-3 px-5 text-xs font-bold text-emerald-800 hover:bg-gray-100 flex items-center gap-1.5 transition"
-          id="settings-add-recurring-btn"
-        >
-          <Plus size={14} />
-          + Add Recurring Transaction
         </button>
       </div>
 
       {/* Cloud Sync setup */}
-      <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider py-2 px-4 bg-gray-100 mt-5" id="settings-sec-head-sync">
+      <div className={`${sectionHeadingClass} mt-5`} id="settings-sec-head-sync">
         Cloud Sync API integration
       </div>
 
@@ -777,7 +400,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
 
           <button
             onClick={handleSaveSync}
-            className="w-full py-2.5 px-4 bg-emerald-800 hover:bg-emerald-900 text-white font-bold text-xs rounded shadow transition flex items-center justify-center gap-1.5"
+            className={primaryButtonClass}
             id="settings-save-sync-btn"
           >
             <Save size={14} />
@@ -788,7 +411,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
             <button
               onClick={handlePushCloud}
               disabled={isPushing}
-              className="py-2.5 px-4 bg-emerald-800 text-white font-bold text-xs rounded transition flex items-center justify-center gap-1.5"
+              className={secondaryButtonClass}
               id="settings-push-sync-btn"
             >
               <Upload size={14} className={isPushing ? "animate-spin" : ""} />
@@ -797,7 +420,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
             <button
               onClick={handlePullCloud}
               disabled={isPulling}
-              className="py-2.5 px-4 bg-emerald-800 text-white font-bold text-xs rounded transition flex items-center justify-center gap-1.5"
+              className={secondaryButtonClass}
               id="settings-pull-sync-btn"
             >
               <Download size={14} className={isPulling ? "animate-spin" : ""} />
@@ -808,26 +431,26 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
       </div>
 
       {/* Backup and restore panel */}
-      <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider py-2 px-4 bg-gray-100 mt-5" id="settings-sec-head-data">
+      <div className={`${sectionHeadingClass} mt-5`} id="settings-sec-head-data">
         Local Data Backups
       </div>
 
-      <div className="bg-white shadow-sm overflow-hidden divide-y divide-gray-150" id="settings-backups-panel">
+      <div className="bg-white overflow-hidden p-3 space-y-2" id="settings-backups-panel">
         <button
           onClick={handleExportJSON}
-          className="w-full py-3 px-5 hover:bg-gray-50 text-left text-xs font-semibold text-gray-700 flex items-center gap-2 transition"
+          className={quietButtonClass}
           id="settings-export-json-btn"
         >
-          <Upload size={14} className="text-gray-400" />
+          <Upload size={14} className="settings-button-icon" />
           Export JSON Backup
         </button>
 
         <button
           onClick={handleImportClick}
-          className="w-full py-3 px-5 hover:bg-gray-50 text-left text-xs font-semibold text-gray-700 flex items-center gap-2 transition"
+          className={quietButtonClass}
           id="settings-import-json-btn"
         >
-          <Download size={14} className="text-gray-400" />
+          <Download size={14} className="settings-button-icon" />
           Import JSON Backup
         </button>
         <input 
@@ -840,19 +463,19 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
 
         <button
           onClick={handleExportCSV}
-          className="w-full py-3 px-5 hover:bg-gray-50 text-left text-xs font-semibold text-gray-700 flex items-center gap-2 transition"
+          className={quietButtonClass}
           id="settings-export-csv-btn"
         >
-          <FileSpreadsheet size={14} className="text-gray-400" />
+          <FileSpreadsheet size={14} className="settings-button-icon" />
           Export Transactions (CSV)
         </button>
 
         <button
           onClick={handleResetData}
-          className="w-full py-3.5 px-5 hover:bg-red-50 text-left text-xs font-bold text-red-600 flex items-center gap-2 transition"
+          className={dangerButtonClass}
           id="settings-wipe-btn"
         >
-          <Trash size={14} className="text-red-500" />
+          <Trash size={14} />
           Reset All Data
         </button>
       </div>

@@ -351,13 +351,15 @@ export const EditIncomeForm: React.FC<EditIncomeFormProps> = ({
 
 interface TransferDetailSheetProps extends SheetCallbacks, ConfirmCallback {
   transfer: Transfer;
+  onEditTransfer: (transfer: Transfer) => void;
 }
 
 export const TransferDetailSheet: React.FC<TransferDetailSheetProps> = ({
   transfer,
   closeSheet,
   showToast,
-  showConfirm
+  showConfirm,
+  onEditTransfer
 }) => {
   const { state, deleteTransfer } = useBudget();
   const fAcc = state.accounts.find(a => a.id === transfer.fromAccountId);
@@ -381,7 +383,13 @@ export const TransferDetailSheet: React.FC<TransferDetailSheetProps> = ({
         <div className="text-[10px] text-gray-400 font-bold font-mono tracking-wider pt-1">{fmtDate(transfer.date)}</div>
       </div>
 
-      <div className="pt-4">
+      <div className="grid grid-cols-2 gap-3 pt-4">
+        <button
+          onClick={() => onEditTransfer(transfer)}
+          className="py-2 px-3 border border-slate-200 text-gray-700 hover:bg-slate-100 rounded-md text-xs font-semibold flex items-center justify-center gap-1 transition"
+        >
+          Edit Detail
+        </button>
         <button
           onClick={() => {
             showConfirm('Delete Transfer?', 'Erase this account transfer? Starting account balances will adjust back instantly.', () => {
@@ -390,7 +398,7 @@ export const TransferDetailSheet: React.FC<TransferDetailSheetProps> = ({
               showToast('Account transfer deleted', null, undefined);
             });
           }}
-          className="w-full py-2.5 px-3 border border-red-550/20 text-red-650 hover:bg-red-50 rounded-md text-xs font-semibold flex items-center justify-center gap-1 transition"
+          className="py-2 px-3 border border-red-550/20 text-red-650 hover:bg-red-50 rounded-md text-xs font-semibold flex items-center justify-center gap-1 transition"
         >
           Delete Transfer
         </button>
